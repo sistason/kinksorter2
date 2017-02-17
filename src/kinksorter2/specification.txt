@@ -1,0 +1,40 @@
+Kinksorter
+
+The purpose of this program is to sort multiple movie storages together.
+
+Movie is any video-file (Porn), which is uniquely taggable.
+Storage means a number of videos, placed in a directory structure (Your Porn directory).
+API means a way to assign each Movie properties by which it is identifiable by the Kinksorter and by a user.
+
+== Sorted Storage ==
+A sorted storage contains the directories of the APIs, by which a movie is tagged, which further
+contain the movies in a structure best describing the specific APIs' sources' (Porn Site) organising structure.
+- Sorting a sorted storage again should only analyse and sort the unsorted files of the Storage.
+
+== Remote Storage ==
+A remote storage is a Storage not yet sorted.
+- It can be either writeable or not.
+- It may require a plugin to get the Movies by.
+
+= Movie =
+A movie contains data to describe its file, its content and its API.
+- The file properties describe the current file of the movie.
+- The scene properties describe the content of the movie, by which it is (to be) sorted.
+- The API describes the means to get the scene properties.
+
+= Scene Properties =
+A scene contains API-specific information to tag the movie.
+A scene contains:
+- a name given by the production.
+- a date (when it's shot or when it's released)
+- a number of performers (usually their names)
+Often, a scene also contains:
+- a specific subgenre
+- an identifier
+
+= File Properties =
+To be able to locate the file, a movie contains:
+- the full path, by which the file can be retrieved by a plugin (usually a file on disk)
+- the file extension, to correctly build the sorted file with the scene information
+- the relative path, after the root of the Storage the file is in.
+-
