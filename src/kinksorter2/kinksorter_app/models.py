@@ -11,12 +11,6 @@ class Storage(models.Model):
     plugin = models.CharField(max_length=50)
 
 
-class SortedStorage(models.Model):
-    """ A Sorted Storage consists of multiple storages """
-    path = models.CharField(max_length=500)
-    storages = models.ManyToManyField(Storage)
-
-
 class Movie(models.Model):
     file_properties = models.ForeignKey(FileProperties)
 
