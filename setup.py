@@ -12,9 +12,12 @@ class Setup:
         if not os.path.exists(self.root_path):
             os.makedirs(self.root_path, exist_ok=True)
 
+        kinkcom_db = os.path.join(self.root_path, "src", "kinksorter_app", "apis", "kinkcom", "kinkyapi.db.gz")
         commands = [
             ["python3", "-m", "venv", os.path.join(self.root_path, 'virtualenv')],
-            ["cp", "-r", os.path.join(os.path.dirname(__file__), "src"), self.root_path]
+            ["cp", "--exclude=kinksorter.db", "-r", os.path.join(os.path.dirname(__file__), "src"), self.root_path],
+            ["wget", "-O", kinkcom_db, "https://www.kinkyapi.site/kinkcom/dump_sqlite" ],
+            ["gunzip", kinkcom_db]
         ]
         for command in commands:
             print('Running:', ' '.join(command))
@@ -38,7 +41,8 @@ class Setup:
             print('Uninstall failed, error: "{}"'.format(ret.stderr))
 
     def start(self):
-        os.system("cd {} && sh virtualenv/bin/activate && cd {} && python3 manage.py runserver".format(
+        os.system("cd {} && sh virtualenv/bin/activate && cd {} && "
+                  "python3 manage.py migrate && python3 manage.py runserver".format(
             self.root_path,
             os.path.join(self.root_path, 'src')))
 
