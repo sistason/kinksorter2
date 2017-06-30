@@ -42,7 +42,7 @@ class StorageHandler:
 
     def delete(self):
         if self.storage is not None:
-            for movie in self.storage.movies:
+            for movie in self.storage.movies.all():
                 movie.delete()
             self.storage.delete()
 

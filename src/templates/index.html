@@ -1,55 +1,52 @@
 {% extends "base.html" %}
 
 {% block content %}
+    <p>The database holds a total of {{ total_number }} titles.</p>
 
-    <div class="manage_storages">Storages:
-        <ul>{% for s in storages %}
-            <li>
+    Storages:
+    <ul>
+        <li>
+            <form class="add_storage" method="GET" action="/storage/add/">
+                <button type="submit">+</button>
+                <input name="name", placeholder="name" />
+                <input name="storage_path" placeholder="storage_path"  />
+                <label for="read_only" title="ro" name="ro:"  >
+                    <input id="read_only" type="checkbox" value="False" name="read_only" />
+                </label>
+            </form>
+        </li>
+        {% for s in storages %}
+        <li>
+            <div class="manage_storage">
                 <form class="delete_storage" method="GET" action="/storage/del/">
-                    {% csrf_token %}
                     <input type="hidden" name="storage_id" value={{ s.id }} />
-                    <button type="submit">-</button>
-                    <strong>{{ s.name }}</strong> - {{ s.movies }} titles
+                    <button class="confirm" type="submit">-</button>
+                    Storage <strong>{{ s.name }}</strong> - Contains {{ s.movies_count }} titles
                     &nbsp;&nbsp;&nbsp;&nbsp;
                     <span class="response"></span>
                 </form>
 
-            </li>
-            {% endfor %}
-            <li>
-                <form class="add_storage" method="GET" action="/storage/add/">
-                    {% csrf_token %}
-                    <button type="submit">+</button>
-                    <input placeholder="name" />
-                    <input placeholder="storage_path"  />
-                    <label for="read_only" title="ro" name="ro:"  >
-                        <input id="read_only" type="checkbox" value="False" name="read_only" />
-                    </label>
-                </form>
-            </li>
-        </ul>
-    </div>
+                <div class="manage_movies">Following {{ s.unrecognized_movies|length }} items were not yet successfully recognized.<br />
+                    Input "better" names/IDs so the Kinksorter can better recognize these.
+                    <ol>
+                    {% for u in s.unrecognized_movies %}
+                        <li>
+                            <form class="modify_scene" method="GET" action="/movie/recognize">
+                                <input name="new_scene_id" placeholder="SceneID" size="6" />
+                                <input name="new_scene_name" id="file_name"
+                                       placeholder="{{ u.file_properties.relative_path }}" size="80"/>
 
-    <p>The database holds a total of {{ total_number }} titles.</p>
+                                <input name="movie_id" value="{{ u.id }}" type="hidden" />
+                                <input type="submit" class="modify_scene_submit" />
+                                <span class="response"></span>
+                            </form>
+                        </li>
+                    {% endfor %}
+                    </ol>
 
-    <div class="manage_movies">Following {{ unrecognized|length }} items were not yet successfully recognized.<br />
-        Input "better" names/IDs so the Kinksorter can better recognize these.
-        <ol>
-        {% for l in unrecognized %}
-            <li>
-                <form class="modify_scene" method="GET" action="/movie/recognize">
-                    <input name="new_scene_id" placeholder="SceneID" size="6" />
-                    <input name="new_scene_name" id="file_name" placeholder="{{ l.file_properties.relative_path }}"
-                           size="80"/>
-
-                    <input name="movie_id" value="{{ l.id }}" type="hidden" />
-                    <input type="submit" class="modify_scene_submit" />
-                    <span class="response"></span>
-                </form>
-            </li>
+                </div>
+            </div>
+        </li>
         {% endfor %}
-        </ol>
-
-    </div>
-
+    </ul>
 {% endblock %}
