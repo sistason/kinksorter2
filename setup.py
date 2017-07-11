@@ -26,10 +26,13 @@ class Setup:
         if not os.path.exists(self.install_path):
             os.makedirs(self.install_path, exist_ok=True)
 
-        if self._install_virtualenv() and self._install_requirements() and \
-           self._install_src() and self._install_kinkyapi():
-            logging.info('Installation complete!')
-            return True
+        try:
+            if self._install_virtualenv() and self._install_requirements() and \
+               self._install_src() and self._install_kinkyapi():
+                logging.info('Installation complete!')
+                return True
+        except KeyboardInterrupt:
+            return False
 
     def _install_virtualenv(self):
         logging.info('Setting up the virtualenv...')
@@ -45,10 +48,9 @@ class Setup:
 
         pip = os.path.join(self.install_path, "virtualenv", "bin", "pip")
         requirements = os.path.join(self.source_path, 'requirements.txt')
-        if not self._run_cmd([pip, 'freeze', '|', 'diff', requirements, '-']):
-            if not self._run_cmd([pip, 'install', '-r', requirements]):
-                logging.warning('Some requirements are still unsatisfied!')
-                return False
+        if not self._run_cmd([pip, 'install', '-r', requirements]):
+            logging.warning('Some requirements are still unsatisfied!')
+            return False
 
         return True
 
