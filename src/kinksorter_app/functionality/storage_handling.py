@@ -2,6 +2,7 @@ import subprocess
 import logging
 import os
 
+from django_q.tasks import async
 from django.core.exceptions import ObjectDoesNotExist
 
 from kinksorter_app.models import Storage, Movie, FileProperties
@@ -82,7 +83,7 @@ class MovieScanner:
             logging.debug('Scanning file {}...'.format(leaf.full_path[-100:]))
             if leaf.is_writeable() and leaf.is_video_file():
                 logging.debug('  Adding movie {}...'.format(leaf.full_path[-100:]))
-                self.add_movie(leaf, tree)
+                async(self.add_movie, leaf, tree)
 
         for next_tree in tree.nodes:
             self._scan_tree(next_tree)
@@ -105,9 +106,11 @@ class MovieScanner:
         file_properties.save()
 
         movie = Movie(file_properties=file_properties, api=api.name)
-        movie.save()
 
-        api.recognize(movie)
+        scene_properties = api.recognize(movie)
+        if scene_properties:
+            movie.scene_properties = scene_properties
+        movie.save()
 
         self.storage.movies.add(movie)
         print('ADDED MOVIE {}...'.format(movie.scene_properties))
@@ -143,3 +146,12 @@ class Leaf:
 
     def get_extension(self):
         return os.path.splitext(self.full_path)[-1]
+
+
+def get_unrecognized_movies(storage_id):
+    try:
+        storage = Storage.objects.get(id=storage_id)
+        print(storage)
+        return storage.movies.filter(scene_properties=0)
+    except ObjectDoesNotExist:
+        return None

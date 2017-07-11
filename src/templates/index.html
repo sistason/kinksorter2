@@ -8,7 +8,7 @@
         <li>
             <form class="add_storage" method="GET" action="/storage/add/">
                 <button type="submit">+</button>
-                <input name="name", placeholder="name" />
+                <input name="name" placeholder="name" />
                 <input name="storage_path" placeholder="storage_path"  />
                 <label for="read_only" title="ro" name="ro:"  >
                     <input id="read_only" type="checkbox" value="False" name="read_only" />
@@ -18,13 +18,17 @@
         {% for s in storages %}
         <li>
             <div class="manage_storage">
-                <form class="delete_storage" method="GET" action="/storage/del/">
+                <form class="delete_storage" method="GET" action="/storage/delete/">
                     <input type="hidden" name="storage_id" value={{ s.id }} />
                     <button class="confirm" type="submit">-</button>
-                    Storage <strong>{{ s.name }}</strong> - Contains {{ s.movies_count }} titles
-                    &nbsp;&nbsp;&nbsp;&nbsp;
                     <span class="response"></span>
                 </form>
+                <form class="update_storage" method="GET" action="/storage/update/">
+                    <input type="hidden" name="storage_id" value={{ s.id }} />
+                    <button type="submit">update</button>
+                    <span class="response"></span>
+                </form>
+                Storage <strong>{{ s.name }}</strong> - Contains {{ s.movies_count }} titles
 
                 <div class="manage_movies">Following {{ s.unrecognized_movies|length }} items were not yet successfully recognized.<br />
                     Input "better" names/IDs so the Kinksorter can better recognize these.

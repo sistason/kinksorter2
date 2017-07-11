@@ -15,8 +15,9 @@ class RecognitionHandler:
             self.api = None
 
     def recognize(self, new_name='', new_sid=0):
-        self.api.recognize(self.movie, override_name=new_name, override_sid=new_sid)
+        scene_properties = self.api.recognize(self.movie, override_name=new_name, override_sid=new_sid)
 
-        if self.movie.scene_properties != 0:
+        if scene_properties != 0 and scene_properties is not None:
+            self.movie.scene_properties = scene_properties
             self.movie.save()
             return True

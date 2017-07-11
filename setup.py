@@ -2,49 +2,91 @@
 
 import subprocess
 import os
+import logging
+
+if os.sys.version[0] != '3':
+    print('Please use python3, not python2')
+    os.sys.exit(1)
 
 
 class Setup:
     def __init__(self, root_path):
-        self.root_path = root_path = os.path.join(root_path, '.kinksorter')
+        self.install_path = os.path.join(root_path, '.kinksorter')
+        self.source_path = os.path.dirname(__file__)
+
+    @staticmethod
+    def _run_cmd(cmd):
+        ret = subprocess.run(cmd, stderr=subprocess.PIPE)
+        if ret.returncode:
+            logging.error('Command {0} failed, error was: "{1}"'.format(cmd, ret.stderr))
+            return False
+        return True
 
     def install(self):
-        if not os.path.exists(self.root_path):
-            os.makedirs(self.root_path, exist_ok=True)
+        if not os.path.exists(self.install_path):
+            os.makedirs(self.install_path, exist_ok=True)
 
-        kinkcom_db = os.path.join(self.root_path, "src", "kinksorter_app", "apis", "kinkcom", "kinkyapi.db.gz")
-        commands = [
-            ["python3", "-m", "venv", os.path.join(self.root_path, 'virtualenv')],
-            ["cp", "--exclude=kinksorter.db", "-r", os.path.join(os.path.dirname(__file__), "src"), self.root_path],
-            ["wget", "-O", kinkcom_db, "https://www.kinkyapi.site/kinkcom/dump_sqlite" ],
-            ["gunzip", kinkcom_db]
-        ]
-        for command in commands:
-            print('Running:', ' '.join(command))
-            ret = subprocess.run(command, stderr=subprocess.PIPE)
-            if ret.returncode:
-                print('Command failed, error was: "{}"'.format(ret.stderr))
-                self.uninstall()
-                return
+        if self._install_virtualenv() and self._install_requirements() and \
+           self._install_src() and self._install_kinkyapi():
+            logging.info('Installation complete!')
+            return True
 
-        print('Installation complete!')
+    def _install_virtualenv(self):
+        logging.info('Setting up the virtualenv...')
+        if not os.path.exists(os.path.join(self.install_path, 'virtualenv')):
+            cmd = ["python3", "-m", "venv", os.path.join(self.install_path, 'virtualenv')]
+            if not self._run_cmd(cmd):
+                return False
+
+        return True
+
+    def _install_requirements(self):
+        logging.info('  Satisfying python package requirements...')
+
+        pip = os.path.join(self.install_path, "virtualenv", "bin", "pip")
+        requirements = os.path.join(self.source_path, 'requirements.txt')
+        if not self._run_cmd([pip, 'freeze', '|', 'diff', requirements, '-']):
+            if not self._run_cmd([pip, 'install', '-r', requirements]):
+                logging.warning('Some requirements are still unsatisfied!')
+                return False
+
+        return True
+
+    def _install_src(self):
+        logging.info('Installing the kinksorter at the location...')
+        installed_source_path = os.path.join(self.install_path, 'src')
+        if not os.path.exists(installed_source_path):
+            cmd = ["cp", "-r", os.path.join(self.source_path, 'src'), installed_source_path]
+            if not self._run_cmd(cmd):
+                return False
+
+        return True
+
+    def _install_kinkyapi(self):
+        logging.info('Making sure the KinkyAPI is up-to-date...')
+        kinkcom_db_gz = os.path.join(self.install_path, "src", "kinksorter_app", "apis", "kinkcom", "kinkyapi.db.gz")
+        if not os.path.exists(kinkcom_db_gz[:-3]):
+            cmd = ["wget", "-O", kinkcom_db_gz, "https://www.kinkyapi.site/kinkcom/dump_sqlite"]
+            if not self._run_cmd(cmd):
+                return False
+            self._run_cmd(["gunzip", kinkcom_db_gz])
+
+        return True
 
     def uninstall(self):
-        if not os.path.exists(self.root_path):
-            print('There is no kinksorter installation at "{}"!'.format(self.root_path))
+        if not os.path.exists(self.install_path):
+            logging.info('There is no kinksorter installation at "{0}"!'.format(self.install_path))
             return
 
-        ret = subprocess.run(["rm", "-r", self.root_path], stderr=subprocess.PIPE)
-        if not ret.returncode:
-            print('Uninstall complete!')
+        if self._run_cmd(["rm", "-r", self.install_path]):
+            logging.info('Uninstall complete!')
         else:
-            print('Uninstall failed, error: "{}"'.format(ret.stderr))
+            logging.info('Uninstall failed')
 
     def start(self):
-        os.system("cd {} && sh virtualenv/bin/activate && cd {} && "
-                  "python3 manage.py migrate && python3 manage.py runserver".format(
-            self.root_path,
-            os.path.join(self.root_path, 'src')))
+        os.system("/bin/bash -c 'source {0} && python3 {1} migrate -v0 && python3 {1} runserver'".format(
+                                                            os.path.join(self.install_path, "virtualenv/bin/activate"),
+                                                            os.path.join(self.install_path, 'src', 'manage.py')))
 
 
 if __name__ == '__main__':
@@ -57,13 +99,18 @@ if __name__ == '__main__':
             return path.abspath(string)
         raise argparse.ArgumentTypeError('%s is no directory or isn\'t writeable' % string)
 
-    argparser = argparse.ArgumentParser(description="Easy Porn storage combining via webinterface")
-    argparser.add_argument('action', choices=['install', 'uninstall', 'start'], metavar="action",
+    argparser = argparse.ArgumentParser(description="Easy porn storage combining via webinterface")
+    argparser.add_argument('-r', '--remove', action='store_true',
                            help='What to do? (install, uninstall, start)')
     argparser.add_argument('root_path', type=argcheck_dir, metavar="destination",
                            help='Set the path where the sorted storage should be created')
 
     args = argparser.parse_args()
 
+    logging.basicConfig(format='%(message)s', level=logging.INFO)
+
     setup = Setup(args.root_path)
-    getattr(setup, args.action)()
+    if args.remove:
+        setup.uninstall()
+    else:
+        setup.install() and setup.start()

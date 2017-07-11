@@ -1,0 +1,11 @@
+beautifulsoup4==4.5.3
+bs4==0.0.1
+Django==1.10.7
+django-q==0.7.18
+fuzzywuzzy==0.14.0
+html5lib==0.999999999
+lxml
+numpy==1.12.1
+python-Levenshtein
+scandir==1.5
+wheel==0.29
