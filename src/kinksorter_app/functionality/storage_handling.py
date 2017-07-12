@@ -4,6 +4,7 @@ import os
 
 from django_q.tasks import async
 from django.core.exceptions import ObjectDoesNotExist
+from django.core.serializers import serialize
 
 from kinksorter_app.models import Storage, Movie, FileProperties
 from kinksorter_app.apis.api_router import get_correct_api, APIS
@@ -148,10 +149,35 @@ class Leaf:
         return os.path.splitext(self.full_path)[-1]
 
 
-def get_unrecognized_movies(storage_id):
+def get_storage(storage_id):
     try:
-        storage = Storage.objects.get(id=storage_id)
-        print(storage)
-        return storage.movies.filter(scene_properties=0)
+        return Storage.objects.get(id=int(storage_id))
     except ObjectDoesNotExist:
         return None
+
+
+def get_all_storages():
+    storage_data = []
+    for storage in Storage.objects.all():
+        storage_data.extend(get_full_storage_data(storage))
+    return storage_data
+
+
+def get_full_storage_data(storage):
+    content = [{'storage_name': storage.name,
+                'storage_id': storage.id,
+                'storage_movies_count': storage.movies.count(),
+                'storage_path': storage.path,
+                'storage_read_only': storage.read_only,
+                'storage_date': storage.date_added,
+                'type': 'storage'
+                }]
+    content.extend([{'storage_id': storage.id,
+                     'id': movie.id,
+                     'path': movie.file_properties.full_path,
+                     'title': movie.file_properties.file_name,
+                     'api': movie.api,
+                     'scene_id': movie.scene_properties,
+                     'type': 'movie'
+                     } for movie in storage.movies.all()])
+    return content
