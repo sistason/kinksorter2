@@ -1,8 +1,15 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <p>The database holds a total of {{ total_number }} titles.</p>
-
+    <p>The database holds a total of <span id="number_of_titles">0</span> titles.</p>
+    <form class="add_storage" method="GET" action="/storage/add/">
+                <button type="submit">+</button>
+                <input name="name" placeholder="name" />
+                <input name="storage_path" placeholder="storage_path"  />
+                <label for="read_only" title="ro" name="ro:"  >
+                    <input id="read_only" type="checkbox" value="False" name="read_only" />
+                </label>
+            </form>
     Storages:
     <div id="storage-tabulator"></div>
 <!--{#
