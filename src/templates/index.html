@@ -10,58 +10,10 @@
                     <input id="read_only" type="checkbox" value="False" name="read_only" />
                 </label>
             </form>
-    Storages:
-    <div id="storage-tabulator"></div>
-<!--{#
-    <ul>
-        <li>
-            <form class="add_storage" method="GET" action="/storage/add/">
-                <button type="submit">+</button>
-                <input name="name" placeholder="name" />
-                <input name="storage_path" placeholder="storage_path"  />
-                <label for="read_only" title="ro" name="ro:"  >
-                    <input id="read_only" type="checkbox" value="False" name="read_only" />
-                </label>
-            </form>
-        </li>
-        {% for s in storages %}
-        <li>
-            <div class="manage_storage">
-                <form class="delete_storage" method="GET" action="/storage/delete/">
-                    <input type="hidden" name="storage_id" value={{ s.id }} />
-                    <button class="confirm" type="submit">-</button>
-                    <span class="response"></span>
-                </form>
-                <form class="update_storage" method="GET" action="/storage/update/">
-                    <input type="hidden" name="storage_id" value={{ s.id }} />
-                    <button type="submit">update</button>
-                    <span class="response"></span>
-                </form>
-                Storage <strong>{{ s.name }}</strong> - Contains {{ s.movies_count }} titles
+    Storages: <br />
+    <div id="mainstorage-tabulator"></div>
 
-                <div class="manage_movies">Following {{ s.unrecognized_movies|length }} items were not yet successfully recognized.<br />
-                    Input "better" names/IDs so the Kinksorter can better recognize these.
-                    <ol>
-                    {% for u in s.unrecognized_movies %}
-                        <li>
-                            <form class="modify_scene" method="GET" action="/movie/recognize">
-                                <input name="new_scene_id" placeholder="SceneID" size="6" />
-                                <input name="new_scene_name" id="file_name"
-                                       placeholder="{{ u.file_properties.relative_path }}" size="80"/>
+    <div id="newstorage-tabulator"></div>
 
-                                <input name="movie_id" value="{{ u.id }}" type="hidden" />
-                                <input type="submit" class="modify_scene_submit" />
-                                <span class="response"></span>
-                            </form>
-                        </li>
-                    {% endfor %}
-                    </ol>
-
-                </div>
-            </div>
-        </li>
-        {% endfor %}
-    </ul>
-#}
--->
+    <div id="stopfloater"></div>
 {% endblock %}

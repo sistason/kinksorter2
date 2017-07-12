@@ -3,10 +3,10 @@ import logging
 import os
 
 from django_q.tasks import async
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.core.serializers import serialize
 
-from kinksorter_app.models import Storage, Movie, FileProperties
+from kinksorter_app.models import Storage, Movie, FileProperties, MainStorage
 from kinksorter_app.apis.api_router import get_correct_api, APIS
 
 
@@ -102,6 +102,7 @@ class MovieScanner:
         relative_path = leaf.full_path[len(self.directory_tree.path):]
         file_properties = FileProperties(full_path=leaf.full_path,
                                          file_name=leaf.get_file_name(),
+                                         file_size=leaf.get_file_size(),
                                          extension=leaf.get_extension(),
                                          relative_path=relative_path)
         file_properties.save()
@@ -145,6 +146,9 @@ class Leaf:
     def get_file_name(self):
         return os.path.basename(self.full_path)
 
+    def get_file_size(self):
+        return os.stat(self.full_path).st_size
+
     def get_extension(self):
         return os.path.splitext(self.full_path)[-1]
 
@@ -156,28 +160,74 @@ def get_storage(storage_id):
         return None
 
 
-def get_all_storages():
+def get_main_storage():
+    storage = None
+    try:
+        storage = MainStorage.objects.get_or_create()[0]
+    except MultipleObjectsReturned:
+        for stor_ in MainStorage.objects.order_by('movies__count'):
+            if storage is None:
+                storage = stor_
+            else:
+                stor_.delete()
+
+    return get_main_storage_data(storage)
+
+
+def get_main_storage_data(storage):
+    return {'storage_path': storage.path,
+            'storage_date': storage.date_added,
+            'movies': get_movies_of_storage(storage)
+            }
+
+
+def get_movies_of_storage(storage):
+    rows = []
+    for movie in storage.movies.all():
+        if not movie.scene_properties:
+            scene = {}
+        else:
+            try:
+                api = APIS.get(movie.api, APIS.get('default'))
+                model = api.get_correct_model()
+                scene = model.objects.get(shootid=movie.scene_properties).serialize()
+            except Exception as e:
+                print('Here HAS to fail something at some point...', e)
+                print('API: ', api)
+                print('Model: ', model)
+                print('Manager: ', model.objects)
+                print('scene_id: ', movie.scene_properties)
+                print('scene: ', model.objects.filter(shootid=movie.scene_properties))
+
+        new_storage = movie.storage_set.get()
+        movie_row = {'storage_name': new_storage.name,
+                     'storage_id': new_storage.id,
+                     'movie_id': movie.id,
+                     'api': movie.api,
+                     'watch': 'file://' + movie.file_properties.full_path,
+                     'scene_title': scene.get('title'),
+                     'scene_site': scene.get('site', {}).get('name'),
+                     'scene_date': scene.get('date'),
+                     'scene_id': scene.get('shootid')
+                     }
+        rows.append(movie_row)
+
+    return rows
+
+
+def get_new_storages():
     storage_data = []
     for storage in Storage.objects.all():
-        storage_data.extend(get_full_storage_data(storage))
+        storage_data.extend(get_new_storage_data(storage))
     return storage_data
 
 
-def get_full_storage_data(storage):
-    content = [{'storage_name': storage.name,
-                'storage_id': storage.id,
-                'storage_movies_count': storage.movies.count(),
-                'storage_path': storage.path,
-                'storage_read_only': storage.read_only,
-                'storage_date': storage.date_added,
-                'type': 'storage'
-                }]
-    content.extend([{'storage_id': storage.id,
-                     'id': movie.id,
-                     'path': movie.file_properties.full_path,
-                     'title': movie.file_properties.file_name,
-                     'api': movie.api,
-                     'scene_id': movie.scene_properties,
-                     'type': 'movie'
-                     } for movie in storage.movies.all()])
-    return content
+def get_new_storage_data(storage):
+    return get_movies_of_storage(storage) + [{'storage_name': storage.name,
+                                              'storage_id': storage.id,
+                                              'storage_movies_count': storage.movies.count(),
+                                              'storage_path': storage.path,
+                                              'storage_read_only': storage.read_only,
+                                              'storage_date': storage.date_added,
+                                              'type': 'storage'
+                                             }]

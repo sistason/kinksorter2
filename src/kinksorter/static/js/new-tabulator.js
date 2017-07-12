@@ -3,26 +3,6 @@ $(document).ready( function() {
     var storages_count = 0;
     var number_of_titles = 0;
 
-    var update_vars = function(url, params, response){
-        var number_of_titles_ = 0;
-        var storages_count_ = 0;
-        var item;
-        for (item in response) {
-            if (response[item].type == 'storage')
-                storages_count_++;
-            else
-                number_of_titles_++;
-        }
-        storages_count = storages_count_;
-        number_of_titles = number_of_titles_;
-        $('#number_of_titles').text(number_of_titles);
-        return response
-    };
-
-    var group_start_open = function(){
-        return (storages_count <= 1);
-    };
-
     var show_tooltips = function(cell) {
         return cell.getRow().getData().path;
     };
@@ -70,13 +50,12 @@ $(document).ready( function() {
     // TODO: check if updating breaks editing. Shouldn't.
     // TODO: Problem: updateOrAdd doesn't delete. But setData def. breaks editing, right?
     var update = function(event){
-        $("#storage-tabulator").tabulator("updateOrAddData", "/storage/get_all_storages", {}, "GET");
+        $("#newstorage-tabulator").tabulator("updateOrAddData", "/storage/get_all_storages", {}, "GET");
     };
 
-    $("#storage-tabulator").tabulator({
-        ajaxURL: "/storage/get_all_storages",
+    $("#newstorage-tabulator").tabulator({
+        ajaxURL: "/storage/get_new_storages",
         ajaxConfig: "GET",
-        ajaxResponse: update_vars,
 
         fitColumns: true,
         movableColumns: true,
@@ -84,7 +63,6 @@ $(document).ready( function() {
 
         groupBy: "storage_id",
         groupHeader: show_group_header,
-        groupStartOpen: group_start_open,
 
         rowUpdated: updated_row,
         cellEdited: modify_movie,
@@ -92,12 +70,15 @@ $(document).ready( function() {
         tooltips: show_tooltips,
 
         columns: [
-            {title: "API", field: "api", minWidth: 80, width:80, editor: true},
-            {title: "Scene-ID <br /><span style='fontsize: 8px'>(all?)</span>",
-                field: "scene_id", minWidth: 80, width:100, editor: true},
-            //{title: "Path", field: "path", visible: false},
-            {title: "Title", field: "title", editor: true}
-            //{title: "ID", field: "id", visible: false}
+            {title: "Options"},
+            {title: "API", field: "api", minWidth: 80, width:80},
+            {title: "Title", columns: [
+                {title: "Site", field: "scene_site"},
+                {title: "Date", filed: "scene_date"},
+                {title: "ID", filed: "scene_id"}
+                ]
+            },
+            {title: "Watch"}
         ]
 
         //TODO: Delete item, from table and from database
