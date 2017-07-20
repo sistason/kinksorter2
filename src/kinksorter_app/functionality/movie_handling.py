@@ -1,4 +1,4 @@
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 
 from kinksorter_app.apis.api_router import APIS
 from kinksorter_app.models import Storage, Movie, FileProperties
@@ -21,3 +21,9 @@ class RecognitionHandler:
             self.movie.scene_properties = scene_properties
             self.movie.save()
             return True
+
+
+def delete_movie(movie_id):
+    return bool([movie.delete() for movie in Movie.objects.filter(id=movie_id)])
+
+

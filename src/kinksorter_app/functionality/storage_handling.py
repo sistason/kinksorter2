@@ -181,11 +181,21 @@ def get_main_storage_data(storage):
             }
 
 
+def change_storage_name(storage_id, new_name):
+    storage = get_storage(storage_id)
+    if storage:
+        storage.name = new_name
+        storage.save()
+        return True
+
+
 def get_movies_of_storage(storage):
     rows = []
     for movie in storage.movies.all():
+        status = 'okay'
         if not movie.scene_properties:
             scene = {}
+            status = 'unrecognized'
         else:
             try:
                 api = APIS.get(movie.api, APIS.get('default'))
@@ -199,27 +209,28 @@ def get_movies_of_storage(storage):
                 print('scene_id: ', movie.scene_properties)
                 print('scene: ', model.objects.filter(shootid=movie.scene_properties))
 
+
+        #duplicate = MainStorage.objects.get().movies.filter(movie_id=movie.id)
+        if status == 'okay' and movie.mainstorage_set.exists():
+            status = 'duplicate'
+
         new_storage = movie.storage_set.get()
         movie_row = {'storage_name': new_storage.name,
                      'storage_id': new_storage.id,
                      'movie_id': movie.id,
                      'api': movie.api,
-                     'watch': 'file://' + movie.file_properties.full_path,
+                     'full_path': movie.file_properties.full_path,
+                     'watch_scene': 'file:/{}'.format(movie.file_properties.full_path),
                      'scene_title': scene.get('title'),
                      'scene_site': scene.get('site', {}).get('name'),
                      'scene_date': scene.get('date'),
-                     'scene_id': scene.get('shootid')
+                     'scene_id': scene.get('shootid'),
+                     'status': status
                      }
+
         rows.append(movie_row)
 
     return rows
-
-
-def get_new_storages():
-    storage_data = []
-    for storage in Storage.objects.all():
-        storage_data.extend(get_new_storage_data(storage))
-    return storage_data
 
 
 def get_new_storage_data(storage):
@@ -231,3 +242,7 @@ def get_new_storage_data(storage):
                                               'storage_date': storage.date_added,
                                               'type': 'storage'
                                              }]
+
+
+def get_storage_ids():
+    return [s.id for s in Storage.objects.only('pk')]

@@ -2,7 +2,7 @@
 
 {% block content %}
     <p>The database holds a total of <span id="number_of_titles">0</span> titles.</p>
-    <form class="add_storage" method="GET" action="/storage/add/">
+    <form class="add_storage" method="GET" action="/storage/add">
                 <button type="submit">+</button>
                 <input name="name" placeholder="name" />
                 <input name="storage_path" placeholder="storage_path"  />
@@ -11,9 +11,9 @@
                 </label>
             </form>
     Storages: <br />
-    <div id="mainstorage-tabulator"></div>
+    <div id="mainstorage_tabulator"></div>
 
-    <div id="newstorage-tabulator"></div>
+    <div id="newstorages_tabulators"></div>
 
     <div id="stopfloater"></div>
 {% endblock %}

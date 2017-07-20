@@ -1,7 +1,14 @@
 $(document).ready( function() {
 
+    var extract_data = function(url, params, response) {
+        var storage_path = response.storage_path;
+        var storage_date = response.storage_date;
+
+        return response.movies;
+    };
+
     var show_tooltips = function(cell) {
-        return cell.getRow().getData().path;
+        return cell.getRow().getData().full_path;
     };
 
     var updated_row = function(row){
@@ -34,9 +41,10 @@ $(document).ready( function() {
         $("#storage-tabulator").tabulator("updateOrAddData", "/storage/get_all_storages", {}, "GET");
     };
 
-    $("#mainstorage-tabulator").tabulator({
+    $("#mainstorage_tabulator").tabulator({
         ajaxURL: "/storage/get_main_storage",
         ajaxConfig: "GET",
+        ajaxResponse: extract_data,
 
         fitColumns: true,
         movableColumns: true,
@@ -57,7 +65,6 @@ $(document).ready( function() {
                 {title: "ID", filed: "scene_id"}
                 ]
             },
-            {title: "Watch"}
         ]
 
         //TODO: Delete item, from table and from database
