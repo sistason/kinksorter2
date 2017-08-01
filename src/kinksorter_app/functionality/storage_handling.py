@@ -155,9 +155,14 @@ class Leaf:
 
 def get_storage(storage_id):
     try:
-        return Storage.objects.get(id=int(storage_id))
+        storage_id = int(storage_id)
+        if storage_id == 0:
+            return get_main_storage()
+        return Storage.objects.get(id=storage_id)
     except ObjectDoesNotExist:
         return None
+    except ValueError:
+        return False
 
 
 def get_main_storage():
@@ -171,14 +176,30 @@ def get_main_storage():
             else:
                 stor_.delete()
 
-    return get_main_storage_data(storage)
+    return storage
 
 
-def get_main_storage_data(storage):
-    return {'storage_path': storage.path,
+def get_storage_data(storage=None, storage_id=''):
+    if storage is None:
+        if storage_id == '':
+            return None
+        storage = get_storage(storage_id)
+        if storage is None or storage is False:
+            return storage
+
+    storage_id = storage.id if type(storage) is Storage else 0
+
+    stor = {'storage_path': storage.path,
             'storage_date': storage.date_added,
-            'movies': get_movies_of_storage(storage)
+            'storage_id': storage_id,
+            'storage_movies_count': storage.movies.count(),
+            'type': 'storage'
             }
+    if int(storage_id) != 0:
+        stor['storage_name'] = storage.name
+        stor['storage_read_only'] = storage.read_only
+
+    return [stor] + get_movies_of_storage(storage)
 
 
 def change_storage_name(storage_id, new_name):
@@ -209,8 +230,6 @@ def get_movies_of_storage(storage):
                 print('scene_id: ', movie.scene_properties)
                 print('scene: ', model.objects.filter(shootid=movie.scene_properties))
 
-
-        #duplicate = MainStorage.objects.get().movies.filter(movie_id=movie.id)
         if status == 'okay' and movie.mainstorage_set.exists():
             status = 'duplicate'
 
@@ -221,7 +240,7 @@ def get_movies_of_storage(storage):
                      'api': movie.api,
                      'full_path': movie.file_properties.full_path,
                      'watch_scene': 'file:/{}'.format(movie.file_properties.full_path),
-                     'scene_title': scene.get('title'),
+                     'title': scene.get('title') if 'title' in scene else movie.file_properties.file_name,
                      'scene_site': scene.get('site', {}).get('name'),
                      'scene_date': scene.get('date'),
                      'scene_id': scene.get('shootid'),
@@ -231,17 +250,6 @@ def get_movies_of_storage(storage):
         rows.append(movie_row)
 
     return rows
-
-
-def get_new_storage_data(storage):
-    return get_movies_of_storage(storage) + [{'storage_name': storage.name,
-                                              'storage_id': storage.id,
-                                              'storage_movies_count': storage.movies.count(),
-                                              'storage_path': storage.path,
-                                              'storage_read_only': storage.read_only,
-                                              'storage_date': storage.date_added,
-                                              'type': 'storage'
-                                             }]
 
 
 def get_storage_ids():

@@ -1,0 +1,67 @@
+body {
+    padding-top: 15px;
+}
+
+.tabulators {
+    padding-right: 10px;
+    padding-left: 10px;
+}
+.stopfloater {
+    clear: both;
+}
+.delete_storage {
+    color: red;
+    text-align: right;
+}
+
+#mainstorage_container {
+    float: left;
+    width:49%;
+    padding-right: 2px;
+    padding-left: 2px;
+}
+
+#newstorages_container {
+    float: right;
+    width: 49%;
+    padding-right: 2px;
+    padding-left: 2px;
+}
+
+#dragbar{
+    width: 3px;
+    float: left;
+    background-color:black;
+    height:800px;
+    cursor: col-resize;
+    margin-top: 150px;
+    margin-bottom: 20%;
+    margin-left: 10px;
+    margin-right: 5px;
+}
+#ghostbar{
+  width:3px;
+  background-color:black;
+  opacity:0.5;
+  position:absolute;
+  cursor: col-resize;
+  z-index:999;
+}
+
+.newstorages {
+
+}
+
+.column_header_container {
+    width: 100%;
+}
+
+.img_functions {
+    width: 25px;
+    cursor: pointer;
+}
+.column_header {
+    text-align: center;
+}
+
+

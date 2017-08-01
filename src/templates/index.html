@@ -2,18 +2,30 @@
 
 {% block content %}
     <p>The database holds a total of <span id="number_of_titles">0</span> titles.</p>
-    <form class="add_storage" method="GET" action="/storage/add">
-                <button type="submit">+</button>
-                <input name="name" placeholder="name" />
-                <input name="storage_path" placeholder="storage_path"  />
-                <label for="read_only" title="ro" name="ro:"  >
+
+    <br />
+
+    <div class="tabulators">
+        <div id="mainstorage_container">
+            <p class="column_header">Main Database</p>
+            <div id="mainstorage_tabulator"></div>
+        </div>
+
+        <div id="dragbar" >&nbsp;</div>
+
+        <div id="newstorages_container">
+            <div class="newstorages_0 newstorages">
+                <form class="add_storage" method="GET" action="/storage/add">
+                    <button type="submit">Add</button>
+                    <input name="name" placeholder="New storage name" />
+                    <input name="storage_path" placeholder="New storage path"  />
                     <input id="read_only" type="checkbox" value="False" name="read_only" />
-                </label>
-            </form>
-    Storages: <br />
-    <div id="mainstorage_tabulator"></div>
+                    <label for="read_only">read_only?</label>
+                </form>
+                <br />
+            </div>
+        </div>
 
-    <div id="newstorages_tabulators"></div>
-
-    <div id="stopfloater"></div>
+        <div class="stopfloater"></div>
+    </div>
 {% endblock %}

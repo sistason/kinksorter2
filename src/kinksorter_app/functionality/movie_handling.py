@@ -1,7 +1,7 @@
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 
 from kinksorter_app.apis.api_router import APIS
-from kinksorter_app.models import Storage, Movie, FileProperties
+from kinksorter_app.models import Storage, Movie, FileProperties, MainStorage
 
 
 class RecognitionHandler:
@@ -26,4 +26,13 @@ class RecognitionHandler:
 def delete_movie(movie_id):
     return bool([movie.delete() for movie in Movie.objects.filter(id=movie_id)])
 
+
+def add_movie_to_main(movie_id):
+    try:
+        movie = Movie.objects.get(id=movie_id)
+        MainStorage.objects.get().movies.add(movie)
+        return True
+    except ObjectDoesNotExist:
+        print('nope')
+        return False
 
