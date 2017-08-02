@@ -3,6 +3,7 @@ import datetime
 from os import path
 
 from kinksorter.settings import BASE_DIR
+from kinksorter_app.apis.api_router import APIS
 
 
 class FileProperties(models.Model):
@@ -18,6 +19,42 @@ class Movie(models.Model):
     api = models.CharField(max_length=50, null=True)
     # scene_properties contains an id to find the properties again with the specified API
     scene_properties = models.IntegerField(default=0)
+
+    def serialize(self):
+        status = 'okay'
+        if not self.scene_properties:
+            scene = {}
+            status = 'unrecognized'
+        else:
+            try:
+                api = APIS.get(self.api, APIS.get('default'))
+                model = api.get_correct_model()
+                scene = model.objects.get(shootid=self.scene_properties).serialize()
+            except Exception as e:
+                print('Here HAS to fail something at some point...', e)
+                print('API: ', api)
+                print('Model: ', model)
+                print('Manager: ', model.objects)
+                print('scene_id: ', self.scene_properties)
+                print('scene: ', model.objects.filter(shootid=self.scene_properties))
+
+        if status == 'okay' and self.mainstorage_set.exists():
+            status = 'duplicate'
+
+        new_storage = self.storage_set.get()
+        return {
+                'storage_name': new_storage.name,
+                'storage_id': new_storage.id,
+                'movie_id': self.id,
+                'api': self.api,
+                'full_path': self.file_properties.full_path,
+                'watch_scene': 'file:/{}'.format(self.file_properties.full_path),
+                'title': scene.get('title') if 'title' in scene else self.file_properties.file_name,
+                'scene_site': scene.get('site', {}).get('name'),
+                'scene_date': scene.get('date'),
+                'scene_id': scene.get('shootid'),
+                'status': status
+        }
 
 
 class Storage(models.Model):

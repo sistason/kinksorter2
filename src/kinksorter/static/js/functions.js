@@ -22,31 +22,13 @@ var format_date = function(cell, params){
         var date = new Date(parseInt(ts)*1000);
         return date.toISOString().slice(0,10);
     };
-var modify_movie = function(cell){
-        var row = cell.getRow();
 
-        $.ajax({
-               type: 'GET',
-               url: '/movie/recognize',
-               data: {movie_id: row.getData().id,
-                      new_scene_name: row.getCell('title').getValue(),
-                      new_scene_id: row.getCell('scene_id').getValue()
-                     },
-               context: this,
-               //dataType: "text",
-               error: function(xhr, status, error)
-               {
-                   //TODO
-                   //$(this).find($(".response")).css('background', 'red').text(xhr.responseText);
-               }
-         });
-    };
+
 $('.delete').click(function(e) {
         return window.confirm("Are you sure to delete that?");
     });
 
 // TODO: check if updating breaks editing. Shouldn't.
-// TODO: Problem: updateOrAdd doesn't delete. But setData def. breaks editing, right?
 var update_tables = function(event){
     var storage_ids = newstorage_table_ids.concat([0]);
     storage_ids.forEach(function (storage_id) {
@@ -60,11 +42,6 @@ var update_tables = function(event){
         });
     });
 };
-
-var lock_checker = function(lock, delay, fx){
-    if (lock)
-        return;
-    setTimeout(lock_checker(lock), delay)};
 
 var parse_update_tables_response = function(data, storage_id){
     var tabulator;
@@ -150,7 +127,7 @@ $(document).ready(function(){
             build_mainstorage();
             build_newstorages();
 
-            setInterval(update_tables, 10000);
+            //setInterval(update_tables, 10000);
         }
     });
 
@@ -182,14 +159,14 @@ $(document).ready(function(){
 
            $('#mainstorage_container').css("width",(percentage-1) + "%");
            $('#newstorages_container').css("width",(mainPercentage-1) + "%");
+           $('#ghostbar').remove();
+           $(document).unbind('mousemove');
+           dragging = false;
+
            newstorage_tables.forEach(function(i){
                $("#newstorages_"+i+"_tabulator").tabulator("redraw");
            });
            $("#mainstorage_tabulator").tabulator("redraw");
-
-           $('#ghostbar').remove();
-           $(document).unbind('mousemove');
-           dragging = false;
        }
     });
 });

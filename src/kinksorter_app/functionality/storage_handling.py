@@ -213,41 +213,7 @@ def change_storage_name(storage_id, new_name):
 def get_movies_of_storage(storage):
     rows = []
     for movie in storage.movies.all():
-        status = 'okay'
-        if not movie.scene_properties:
-            scene = {}
-            status = 'unrecognized'
-        else:
-            try:
-                api = APIS.get(movie.api, APIS.get('default'))
-                model = api.get_correct_model()
-                scene = model.objects.get(shootid=movie.scene_properties).serialize()
-            except Exception as e:
-                print('Here HAS to fail something at some point...', e)
-                print('API: ', api)
-                print('Model: ', model)
-                print('Manager: ', model.objects)
-                print('scene_id: ', movie.scene_properties)
-                print('scene: ', model.objects.filter(shootid=movie.scene_properties))
-
-        if status == 'okay' and movie.mainstorage_set.exists():
-            status = 'duplicate'
-
-        new_storage = movie.storage_set.get()
-        movie_row = {'storage_name': new_storage.name,
-                     'storage_id': new_storage.id,
-                     'movie_id': movie.id,
-                     'api': movie.api,
-                     'full_path': movie.file_properties.full_path,
-                     'watch_scene': 'file:/{}'.format(movie.file_properties.full_path),
-                     'title': scene.get('title') if 'title' in scene else movie.file_properties.file_name,
-                     'scene_site': scene.get('site', {}).get('name'),
-                     'scene_date': scene.get('date'),
-                     'scene_id': scene.get('shootid'),
-                     'status': status
-                     }
-
-        rows.append(movie_row)
+        rows.append(movie.serialize())
 
     return rows
 

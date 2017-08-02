@@ -3,7 +3,7 @@ from django.http.response import HttpResponse, JsonResponse
 
 from kinksorter_app.functionality.storage_handling import StorageHandler, change_storage_name, \
     get_storage, get_storage_ids, get_storage_data
-from kinksorter_app.functionality.movie_handling import RecognitionHandler, delete_movie, add_movie_to_main
+from kinksorter_app.functionality.movie_handling import RecognitionHandler, delete_movie, add_movie_to_main, get_movie
 
 
 def add_new_storage_request(request):
@@ -57,17 +57,18 @@ def recognize_movie_request(request):
 
     recognition_handler = RecognitionHandler(movie_id)
     if recognition_handler.movie is None:
-        return HttpResponse('No Movie with that id found', status=400)
+        return HttpResponse('No Movie with that id found', status=404)
 
     new_name = request.GET.get('new_scene_name')
     new_sid = request.GET.get('new_scene_id')
     if not new_sid.isdigit():
         return HttpResponse('SceneID has to be an integer', status=400)
 
-    if recognition_handler.recognize(new_name=new_name, new_sid=int(new_sid)):
-        return HttpResponse('Movie recognized', status=200)
-    else:
-        return HttpResponse('Movie could not be recognized', status=406)
+    recognized_movie = recognition_handler.recognize(new_name=new_name, new_sid=int(new_sid))
+    if recognized_movie is not None:
+        return JsonResponse(recognized_movie.serialize(), safe=False)
+
+    return HttpResponse('Movie could not be recognized', status=406)
 
 
 def delete_movie_request(request):
@@ -78,7 +79,7 @@ def delete_movie_request(request):
     return HttpResponse('Movie deleted', status=200)
 
 
-def add_movie_to_main_request(request):
+def merge_movie_request(request):
     movie_id = request.GET.get('movie_id')
     if not movie_id or not movie_id.isdigit():
         return HttpResponse('MovieID has to be an integer', status=400)
@@ -101,3 +102,15 @@ def get_storage_request(request):
 
 def get_storage_ids_request(request):
     return JsonResponse(get_storage_ids(), safe=False)
+
+
+def get_movie_request(request):
+    movie_id = request.GET.get('movie_id')
+    if not movie_id or not movie_id.isdigit():
+        return HttpResponse('MovieID has to be an integer', status=400)
+
+    movie = get_movie(movie_id)
+    if movie is None:
+        return HttpResponse('No Movie with that id found', status=404)
+
+    return JsonResponse(movie, safe=False)

@@ -19,5 +19,6 @@ urlpatterns += [
 urlpatterns += [
     url(r'^movie/recognize/?$', io_handling.recognize_movie_request),
     url(r'^movie/delete/?$', io_handling.delete_movie_request),
-    url(r'^movie/add_to_main/?$', io_handling.add_movie_to_main_request),
+    url(r'^movie/merge/?$', io_handling.merge_movie_request),
+    url(r'^movie/get/?$', io_handling.get_movie_request),
 ]

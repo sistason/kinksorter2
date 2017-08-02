@@ -20,7 +20,7 @@ class RecognitionHandler:
         if scene_properties != 0 and scene_properties is not None:
             self.movie.scene_properties = scene_properties
             self.movie.save()
-            return True
+            return self.movie
 
 
 def delete_movie(movie_id):
@@ -28,11 +28,14 @@ def delete_movie(movie_id):
 
 
 def add_movie_to_main(movie_id):
-    try:
-        movie = Movie.objects.get(id=movie_id)
+    movie = get_movie(movie_id)
+    if movie is not None:
         MainStorage.objects.get().movies.add(movie)
         return True
-    except ObjectDoesNotExist:
-        print('nope')
-        return False
 
+
+def get_movie(movie_id):
+    try:
+        return Movie.objects.get(id=int(movie_id))
+    except (ObjectDoesNotExist, ValueError):
+        return None

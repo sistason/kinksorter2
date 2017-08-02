@@ -2,19 +2,19 @@ var newstorages_built = false;
 var newstorage_table_ids = [];
 var storage_table_storage_data = {};
 
-var add_movie_to_main = function(movie_id){
+var merge_movie = function(movie_id){
     $.ajax({
-           url: '/movie/add_to_main',
+           url: '/movie/merge',
            data: {movie_id: movie_id}
      });
 };
 
-var add_good_movies_to_main = function(storage_id){
+var merge_good_movies = function(storage_id){
     var data = $("#newstorages_"+storage_id+"_tabulator").tabulator("getData", true);
 
     data.forEach(function(current_data){
         if (current_data['status'] == 'okay'){
-            add_movie_to_main(current_data['movie_id']);
+            merge_movie(current_data['movie_id']);
             current_data.delete();
         }
     });
@@ -39,18 +39,45 @@ var change_storage_name = function(storage_id, name){
                'new_storage_name': name}
     });
 };
+var modify_movie = function(cell){
+    var column = cell.getColumn().getField();
+    var row = cell.getRow();
+    var new_scene_name = '', new_scene_id = '';
+
+    if (column == 'title') {
+        new_scene_name = cell.getValue();
+    } else if (column == 'scene_id') {
+        new_scene_id = cell.getValue();
+    }
+
+    $.ajax({
+            type: 'GET',
+            url: '/movie/recognize',
+            data: {movie_id: row.getData().movie_id,
+                  new_scene_name: new_scene_name,
+                  new_scene_id: new_scene_id
+                 },
+            success: row.update,
+            error: function(xhr, status, error)
+            {
+               row.getElement().css('background-color', 'red');
+               //$(this).find($(".response")).css('background', 'red').text(xhr.responseText);
+            }
+     });
+};
+
 var format_options = function(cell, params){
     var del = "<img alt=Delete width='15px' src='/static/img/delete.png' class=delete onClick='delete_movie(" +
         cell.getValue() + ")'  />";
-    var add = "<img alt=Add width='15px' src='/static/img/add.png' onClick='add_movie_to_main(" +
+    var add = "<img alt=Add width='15px' src='/static/img/add.png' onClick='merge_movie(" +
         cell.getValue() + ")' />";
     var watch = "<a href='"+ cell.getData().watch_scene +"'><img width='15px' src='/static/img/watch.png'/></a>";
 
-    return add + "&nbsp;" + del + "&nbsp;" + watch;
+    return ((cell.getData().status == 'okay') ? add + "&nbsp;" : "") + del + "&nbsp;" + watch;
 };
 var format_row = function(row){
-    var color = {'unrecognized': '(255, 130, 130)', 'duplicate': '(255, 255, 130)', 'okay': '(130, 255, 130)'};
-    row.getElement().css({"background": "rgba"+color[row.getData().status]});
+    var color = {'unrecognized': '#ffc0c0', 'duplicate': '#ffffc0', 'okay': '#c0ffc0'};
+    row.getElement().css({"background-color": color[row.getData().status]});
 };
 
 var build_newstorages = function(){
@@ -62,7 +89,7 @@ var build_newstorages = function(){
                 "<table class='column_header_container'><tr>" +
                     "<td>" +
                         "<img title='Add all good movies' class='img_functions' " +
-                            "src='/static/img/add.png' onClick='add_good_movies_to_main(" + storage_id + ")' />" +
+                            "src='/static/img/add.png' onClick='merge_good_movies(" + storage_id + ")' />" +
                     "</td>" +
                     "<td>" +
                         "<p class='column_header'>column_header</p>" +
