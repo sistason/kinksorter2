@@ -39,7 +39,7 @@ class Movie(models.Model):
                 print('scene: ', model.objects.filter(shootid=self.scene_properties))
 
         if status == 'okay' and self.mainstorage_set.exists():
-            status = 'duplicate'
+            status = 'in_main'
 
         new_storage = self.storage_set.get()
         return {

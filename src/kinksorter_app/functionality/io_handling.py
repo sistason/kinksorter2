@@ -3,7 +3,8 @@ from django.http.response import HttpResponse, JsonResponse
 
 from kinksorter_app.functionality.storage_handling import StorageHandler, change_storage_name, \
     get_storage, get_storage_ids, get_storage_data
-from kinksorter_app.functionality.movie_handling import RecognitionHandler, delete_movie, add_movie_to_main, get_movie
+from kinksorter_app.functionality.movie_handling import RecognitionHandler, delete_movie, merge_movie, get_movie, \
+    remove_movie_from_main
 
 
 def add_new_storage_request(request):
@@ -79,13 +80,23 @@ def delete_movie_request(request):
     return HttpResponse('Movie deleted', status=200)
 
 
+def remove_movie_from_main_request(request):
+    movie_id = request.GET.get('movie_id')
+    if not movie_id or not movie_id.isdigit():
+        return HttpResponse('No Movie with that id found', status=400)
+    remove_movie_from_main(movie_id)
+    return HttpResponse('Movie removed', status=200)
+
+
 def merge_movie_request(request):
     movie_id = request.GET.get('movie_id')
     if not movie_id or not movie_id.isdigit():
         return HttpResponse('MovieID has to be an integer', status=400)
-    if not add_movie_to_main(int(movie_id)):
+    movie = merge_movie(movie_id)
+    if movie is None:
         return HttpResponse('No Movie with that id found', status=404)
-    return HttpResponse('Movie added', status=200)
+
+    return JsonResponse(movie.serialize(), safe=False)
 
 
 def get_storage_request(request):
@@ -113,4 +124,4 @@ def get_movie_request(request):
     if movie is None:
         return HttpResponse('No Movie with that id found', status=404)
 
-    return JsonResponse(movie, safe=False)
+    return JsonResponse(movie.serialize(), safe=False)

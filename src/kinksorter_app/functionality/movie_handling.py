@@ -27,11 +27,21 @@ def delete_movie(movie_id):
     return bool([movie.delete() for movie in Movie.objects.filter(id=movie_id)])
 
 
-def add_movie_to_main(movie_id):
+def remove_movie_from_main(movie_id):
+    try:
+        movie = get_movie(movie_id)
+        mainstorage = MainStorage.objects.get()
+        if movie:
+            return mainstorage.movies.remove(movie)
+    except (ObjectDoesNotExist, ValueError):
+        return None
+
+
+def merge_movie(movie_id):
     movie = get_movie(movie_id)
     if movie is not None:
         MainStorage.objects.get().movies.add(movie)
-        return True
+        return movie
 
 
 def get_movie(movie_id):

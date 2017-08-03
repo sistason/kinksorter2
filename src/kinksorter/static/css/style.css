@@ -16,14 +16,14 @@ body {
 
 #mainstorage_container {
     float: left;
-    width:49%;
+    width:48%;
     padding-right: 2px;
     padding-left: 2px;
 }
 
 #newstorages_container {
     float: right;
-    width: 49%;
+    width: 48%;
     padding-right: 2px;
     padding-left: 2px;
 }
@@ -34,10 +34,11 @@ body {
     background-color:black;
     height:800px;
     cursor: col-resize;
+    border: inset thin white;
     margin-top: 150px;
     margin-bottom: 20%;
-    margin-left: 10px;
-    margin-right: 5px;
+    margin-left: 7px;
+    margin-right: 0;
 }
 #ghostbar{
   width:3px;

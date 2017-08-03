@@ -1,32 +1,98 @@
 var show_tooltips = function(cell) {
         return cell.getData().full_path;
     };
-var delete_movie = function(movie_id) {
+var format_row = function(row){
+    var color = {'unrecognized': '#ffc0c0', 'in_main': '#ffffc0', 'okay': '#c0ffc0'};
+    row.getElement().css({"background-color": color[row.getData().status]});
+};
+var delete_movie = function(row) {
     $.ajax({
         url: '/movie/delete',
-        data: {movie_id: movie_id}
+        data: {movie_id: row.getData().movie_id},
+        success: function(data){
+            row.delete();
+        }
     });
+};
+var remove_movie_from_main = function(row) {
+    $.ajax({
+        url: '/movie/remove_from_main',
+        data: {movie_id: row.getData().movie_id},
+        success: function(data){
+            row.delete();
+
+            // Rebuild options/background for the movie in each newstorage_table
+            newstorage_table_ids.forEach(function(storage_id){
+                var rows = $("#newstorages_" + storage_id + "_tabulator").tabulator('getRows');
+                for (var i=0; i<rows.length; i++){
+                    var current_row = rows[i];
+                    if (current_row.getData().movie_id == row.getData().movie_id){
+                        current_row.update({status: 'okay'});
+
+                        var options_cell = current_row.getCell('movie_id');
+                        var options = format_options(options_cell, {storage_id: storage_id});
+                        options_cell.getElement().find('span.options_container').replaceWith(options);
+                        //FIXME: Why do I have to do this manually?
+
+                        format_row(current_row);
+                        break;
+                    }
+                }
+            });
+
+        }
+    });
+};
+var format_options = function(cell, params){
+    var $container = $('<span>', {'class': 'options_container'});
+
+    var $del = $('<img>');
+    if (params.storage_id != 0){
+        $del.attr({alt: "Delete", width: '15px', src: '/static/img/delete.png', 'class': 'delete'});
+        $del.click(function(){
+            delete_movie(cell.getRow())
+        });
+        var $add = $('<img>', {alt: "Add", width: '15px', src: '/static/img/move_to_main.png'});
+        $add.click(function(){
+            merge_movie(cell.getRow(), params.storage_id)
+        });
+        if (cell.getData().status == 'okay') {
+            $container.append($add);
+            $container.append('&nbsp;');
+        }
+    }
+    else {
+        $del.attr({alt: "Remove", width: '15px', src: '/static/img/remove_from_main.png'});
+        $del.click(function(){remove_movie_from_main(cell.getRow())});
+    }
+    $container.append($del);
+    $container.append('&nbsp;');
+
+    var $watch = $('<a>', {href: cell.getData().watch_scene});
+    $watch.append($('<img>', {width: '15px', src: '/static/img/watch.png'}));
+    $container.append($watch);
+
+    return $container;
 };
 var delete_storage = function(storage_id){
     $.ajax({
         url: '/storage/delete',
-        data: {storage_id: storage_id}
+        data: {storage_id: storage_id},
+        success: function(){
+            $("#newstorages_" + storage_id + "_tabulator").tabulator('clearData"');
+            $("div.newstorages_" + storage_id).empty();
+        }
     });
 };
 var format_date = function(cell, params){
-        var ts = cell.getValue();
-        if (ts == null)
-            return;
+    var ts = cell.getValue();
+    if (ts == null)
+        return;
 
-        //FIXME: exceptions if not int?
-        var date = new Date(parseInt(ts)*1000);
-        return date.toISOString().slice(0,10);
-    };
-
-
-$('.delete').click(function(e) {
-        return window.confirm("Are you sure to delete that?");
-    });
+    //FIXME: exceptions if not int?
+    var date = new Date(parseInt(ts)*1000);
+    return date.toISOString().slice(0,10);
+};
 
 // TODO: check if updating breaks editing. Shouldn't.
 var update_tables = function(event){
@@ -42,7 +108,6 @@ var update_tables = function(event){
         });
     });
 };
-
 var parse_update_tables_response = function(data, storage_id){
     var tabulator;
     if (storage_id == 0) {
@@ -115,6 +180,7 @@ var parse_update_tables_response = function(data, storage_id){
 
 };
 
+
 $(document).ready(function(){
     $.ajax({
         url: '/storage/get_storage_ids',
@@ -151,14 +217,13 @@ $(document).ready(function(){
           ghostbar.css("left",e.pageX+2);
        });
     });
-
     $(document).mouseup(function(e){
        if (dragging) {
            var percentage = (e.pageX / window.innerWidth) * 100;
            var mainPercentage = 100-percentage;
 
-           $('#mainstorage_container').css("width",(percentage-1) + "%");
-           $('#newstorages_container').css("width",(mainPercentage-1) + "%");
+           $('#mainstorage_container').css("width",(percentage-2) + "%");
+           $('#newstorages_container').css("width",(mainPercentage-2) + "%");
            $('#ghostbar').remove();
            $(document).unbind('mousemove');
            dragging = false;
@@ -168,5 +233,9 @@ $(document).ready(function(){
            });
            $("#mainstorage_tabulator").tabulator("redraw");
        }
+    });
+
+    $('.delete').click(function(e) {
+        return window.confirm("Are you sure to delete that?");
     });
 });

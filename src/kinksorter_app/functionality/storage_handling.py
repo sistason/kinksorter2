@@ -211,11 +211,7 @@ def change_storage_name(storage_id, new_name):
 
 
 def get_movies_of_storage(storage):
-    rows = []
-    for movie in storage.movies.all():
-        rows.append(movie.serialize())
-
-    return rows
+    return [movie.serialize() for movie in storage.movies.all()]
 
 
 def get_storage_ids():
