@@ -49,20 +49,76 @@ body {
   z-index:999;
 }
 
-.newstorages {
-
+.options_container {
+    text-align: right;
 }
 
 .column_header_container {
     width: 100%;
 }
 
+.column_header_container td {
+    border: dotted thin red;
+}
+
+.newstorages {
+    /*border: inset thin grey;*/
+}
+
+.img_options {
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+}
+
 .img_functions {
     width: 25px;
+    /*height: 25px;*/
     cursor: pointer;
 }
 .column_header {
     text-align: center;
 }
 
+.sorting_container {
+    text-align: center;
+}
 
+.storage_name {
+    font-weight: bold;
+}
+.storage_params {
+    font-size: small;
+}
+
+.column_header_container .img_add_storage {
+    text-align: left;
+}
+.column_header_container .img_delete_storage {
+    text-align: right;
+}
+.img_rescan_storage, .img_recognize_movies {
+    text-align: center;
+}
+.column_header_container .img_description {
+    font-size: x-small;
+}
+.img_force {
+    margin-bottom: -12px;
+}
+.column_header_container {
+    vertical-align: middle;
+    text-align: left;
+}
+
+.column_header_container .input_name {
+    width: 25%;
+    line-height: normal;
+}
+.column_header_container .input_path {
+    width: 45%;
+    line-height: normal;
+}
+.column_header_container label {
+    font-size: small;
+}

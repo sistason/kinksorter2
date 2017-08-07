@@ -27,12 +27,8 @@ var remove_movie_from_main = function(row) {
                 for (var i=0; i<rows.length; i++){
                     var current_row = rows[i];
                     if (current_row.getData().movie_id == row.getData().movie_id){
-                        current_row.update({status: 'okay'});
-
-                        var options_cell = current_row.getCell('movie_id');
-                        var options = format_options(options_cell, {storage_id: storage_id});
-                        options_cell.getElement().find('span.options_container').replaceWith(options);
-                        //FIXME: Why do I have to do this manually?
+                        current_row.update({status: 'okay', movie_id: 1});
+                        current_row.update({movie_id: movie_id});
 
                         format_row(current_row);
                         break;
@@ -44,15 +40,15 @@ var remove_movie_from_main = function(row) {
     });
 };
 var format_options = function(cell, params){
-    var $container = $('<span>', {'class': 'options_container'});
+    var $container = $('<div>', {'class': 'options_container'});
 
     var $del = $('<img>');
     if (params.storage_id != 0){
-        $del.attr({alt: "Delete", width: '15px', src: '/static/img/delete.png', 'class': 'delete'});
+        $del.attr({alt: "Delete", src: '/static/img/delete.png', 'class': 'img_options delete'});
         $del.click(function(){
             delete_movie(cell.getRow())
         });
-        var $add = $('<img>', {alt: "Add", width: '15px', src: '/static/img/move_to_main.png'});
+        var $add = $('<img>', {alt: "Add", src: '/static/img/move_to_main.png', 'class': 'img_options'});
         $add.click(function(){
             merge_movie(cell.getRow(), params.storage_id)
         });
@@ -62,14 +58,14 @@ var format_options = function(cell, params){
         }
     }
     else {
-        $del.attr({alt: "Remove", width: '15px', src: '/static/img/remove_from_main.png'});
+        $del.attr({alt: "Remove", src: '/static/img/remove_from_main.png', 'class': 'img_options'});
         $del.click(function(){remove_movie_from_main(cell.getRow())});
     }
     $container.append($del);
     $container.append('&nbsp;');
 
     var $watch = $('<a>', {href: cell.getData().watch_scene});
-    $watch.append($('<img>', {width: '15px', src: '/static/img/watch.png'}));
+    $watch.append($('<img>', {src: '/static/img/watch.png', 'class': 'img_options'}));
     $container.append($watch);
 
     return $container;
@@ -85,12 +81,11 @@ var delete_storage = function(storage_id){
     });
 };
 var format_date = function(cell, params){
-    var ts = cell.getValue();
+    var ts = parseInt(cell.getValue()) || null;
     if (ts == null)
         return;
 
-    //FIXME: exceptions if not int?
-    var date = new Date(parseInt(ts)*1000);
+    var date = new Date(ts*1000);
     return date.toISOString().slice(0,10);
 };
 

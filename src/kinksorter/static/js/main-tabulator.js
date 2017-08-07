@@ -12,7 +12,7 @@ var build_mainstorage = function() {
         tooltips: show_tooltips,
 
         columns: [
-            {title: "", field: 'movie_id', formatter: format_options, minWidth: 50, width: 50,
+            {title: "", field: 'movie_id', formatter: format_options, minWidth: 48, width: 48,
                 formatterParams: {storage_id: 0}, headerSort: false, frozen: true},
             {title: 'Title', field: "title", formatter: "plaintext", editor: true, frozen: true,
                 minWidth: 300, variableHeight: true},

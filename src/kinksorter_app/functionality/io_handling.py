@@ -15,7 +15,7 @@ def add_new_storage_request(request):
         stor_ = StorageHandler(storage_path, name=name, read_only=read_only)
         if stor_:
             stor_.scan()
-            return HttpResponse('Storage created', status=200)
+            return JsonResponse(get_storage_data(storage=stor_.storage), safe=False)
         return HttpResponse('Storage already exists', status=406)
     return HttpResponse('No storage_path in request', status=400)
 

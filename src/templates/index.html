@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <p>The database holds a total of <span id="number_of_titles">0</span> titles.</p>
+
+    <div class="sorting_container">
+        <p>Here be sorting</p>
+    </div>
 
     <br />
 
@@ -11,12 +14,9 @@
             <div id="mainstorage_tabulator"></div>
         </div>
 
-        <div id="dragbar" >&nbsp;</div>
+        <div id="dragbar">&nbsp;</div>
 
         <div id="newstorages_container">
-            <div class="newstorages_0 newstorages">
-                <br />
-            </div>
         </div>
 
         <div class="stopfloater"></div>

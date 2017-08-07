@@ -1,8 +1,9 @@
 from django.db import models
 import datetime
 from os import path
+import logging
 
-from kinksorter.settings import BASE_DIR
+from kinksorter.settings import BASE_DIR, DEBUG_SFW
 from kinksorter_app.apis.api_router import APIS
 
 
@@ -22,14 +23,18 @@ class Movie(models.Model):
 
     def serialize(self):
         status = 'okay'
+        scene = {}
+
         if not self.scene_properties:
-            scene = {}
             status = 'unrecognized'
         else:
+            model = None
+            api = None
             try:
                 api = APIS.get(self.api, APIS.get('default'))
-                model = api.get_correct_model()
-                scene = model.objects.get(shootid=self.scene_properties).serialize()
+                if api:
+                    model = api.get_correct_model()
+                    scene = model.objects.get(shootid=self.scene_properties).serialize()
             except Exception as e:
                 print('Here HAS to fail something at some point...', e)
                 print('API: ', api)
@@ -46,11 +51,11 @@ class Movie(models.Model):
                 'storage_name': new_storage.name,
                 'storage_id': new_storage.id,
                 'movie_id': self.id,
-                'api': self.api,
+                'api': '' if DEBUG_SFW else self.api,
                 'full_path': self.file_properties.full_path,
-                'watch_scene': 'file:/{}'.format(self.file_properties.full_path),
-                'title': scene.get('title') if 'title' in scene else self.file_properties.file_name,
-                'scene_site': scene.get('site', {}).get('name'),
+                'watch_scene': 'file://{}'.format(self.file_properties.full_path),
+                'title': '' if DEBUG_SFW else (scene.get('title') if 'title' in scene else self.file_properties.file_name),
+                'scene_site': '' if DEBUG_SFW else scene.get('site', {}).get('name'),
                 'scene_date': scene.get('date'),
                 'scene_id': scene.get('shootid'),
                 'status': status
