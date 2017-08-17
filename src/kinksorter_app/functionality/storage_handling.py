@@ -29,12 +29,23 @@ class StorageHandler:
 
             self.storage = new_storage
         else:
-            try:
-                self.storage = Storage.objects.get(id=storage_input)
-            except ObjectDoesNotExist:
-                return
+            self.storage = get_storage(storage_input)
 
         self.scanner = MovieScanner(self.storage, APIS)
+
+    def reset(self):
+        for movie in self.storage.movies.all():
+            #movie.mainstorage_set.delete()
+            movie.delete()
+        self.storage.save()
+
+        self.scan()
+        return True
+
+    def change_name(self, new_name):
+        self.storage.name = new_name
+        self.storage.save()
+        return True
 
     def scan(self):
         if self.storage is not None:
@@ -60,7 +71,7 @@ class MovieScanner:
 
     def scan(self):
         self._get_listing(self.directory_tree, recursion_depth=5)
-        self._scan_tree(self.directory_tree)
+        async(self._scan_tree, self.directory_tree, sync=True)
 
     def _get_listing(self, tree, recursion_depth=0):
         recursion_depth -= 1
@@ -84,7 +95,7 @@ class MovieScanner:
             logging.debug('Scanning file {}...'.format(leaf.full_path[-100:]))
             if leaf.is_writeable() and leaf.is_video_file():
                 logging.debug('  Adding movie {}...'.format(leaf.full_path[-100:]))
-                async(self.add_movie, leaf, tree)
+                self.add_movie(leaf, tree)
 
         for next_tree in tree.nodes:
             self._scan_tree(next_tree)
@@ -200,14 +211,6 @@ def get_storage_data(storage=None, storage_id=''):
         stor['storage_read_only'] = storage.read_only
 
     return [stor] + get_movies_of_storage(storage)
-
-
-def change_storage_name(storage_id, new_name):
-    storage = get_storage(storage_id)
-    if storage:
-        storage.name = new_name
-        storage.save()
-        return True
 
 
 def get_movies_of_storage(storage):

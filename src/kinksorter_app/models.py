@@ -28,20 +28,12 @@ class Movie(models.Model):
         if not self.scene_properties:
             status = 'unrecognized'
         else:
-            model = None
-            api = None
-            try:
-                api = APIS.get(self.api, APIS.get('default'))
-                if api:
-                    model = api.get_correct_model()
-                    scene = model.objects.get(shootid=self.scene_properties).serialize()
-            except Exception as e:
-                print('Here HAS to fail something at some point...', e)
-                print('API: ', api)
-                print('Model: ', model)
-                print('Manager: ', model.objects)
-                print('scene_id: ', self.scene_properties)
-                print('scene: ', model.objects.filter(shootid=self.scene_properties))
+            api = APIS.get(self.api, APIS.get('default'))
+            if api:
+                scene = api.query('shoot', 'shootid', self.scene_properties)
+                if len(scene) > 1:
+                    logging.warning('Multiple scenes for shootid {} found! ({})'.format(self.scene_properties, scene))
+                scene = scene[0]
 
         if status == 'okay' and self.mainstorage_set.exists():
             status = 'in_main'

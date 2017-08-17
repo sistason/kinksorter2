@@ -28,12 +28,31 @@ var merge_good_movies = function(storage_id){
     //$("#mainstorage_tabulator").tabulator("redraw");
 };
 
-var rescan_storage = function(storage_id, force) {
+var rescan_storage = function(storage_id) {
+    // Run /update
+    $.ajax({
+        url: "/storage/update",
+        data: {storage_id: storage_id},
+        success: function(data) {
+        }
+    });
+};
 
+var reset_storage = function(storage_id) {
+    $.ajax({
+        url: "/storage/reset",
+        data: {storage_id: storage_id},
+        success: function(data) {
+            // clear Storage and update MainStorage, which is cleaned by the backend
+            var $storage = $(".newstorages_" + storage_id + "_tabulator").tabulator('clearData');
+            update_table(0);
+        }
+    });
 };
 
 var recognize_storage = function(storage_id, force) {
-
+    // Run /rec on all movies. Force removes
+    alert('recognize');
 };
 
 var set_newstorage_header = function(current_data){
@@ -105,7 +124,6 @@ var add_storage = function(e) {
            //TODO: show status/errors
         }
     });
-
     e.preventDefault();
 };
 
@@ -117,38 +135,46 @@ var build_newstorage_container = function(storage_id){
         "<div class='"+base_class+" newstorages'>" +
             "<table class='column_header_container'>" +
                 "<tr>" +
-                    "<td rowspan='2' class='img_add_storage'>" +
+                    "<td class='img_add_storage'>" +
                         "<img title='Add all good movies' class='img_functions' " +
                             "src='/static/img/move_to_main.png' onClick='merge_good_movies(" + storage_id + ")' />" +
                     "</td>" +
-                    //TODO: rescan_storage, full_rescan_storage, recognize_all_unrecognized, recognize_all_again
-                    "<td class='img_rescan_storage'>" +
-                        "<img title='Rescan storage' class='img_functions' " +
-                            "src='/static/img/rescan_storage.png' onClick='rescan_storage(" + storage_id + ")' />" +
-                    "</td>" +
-                    "<td class='img_recognize_movies'>" +
-                        "<img title='Recognize unrecognized movies' class='img_functions' " +
-                            "src='/static/img/recognize_storage.png' onClick='recognize_storage(" + storage_id + ")' />" +
-                    "</td>" +
-                    "<td rowspan='2' class='column_header'>" +
+                    "<td class='column_header'>" +
                         "<span class='storage_name'>_</span>" +
                         "<br /><span class='storage_params'>&nbsp;</span>" +
                     "</td>" +
-                    "<td rowspan='2' class='img_delete_storage'>" +
-                        "<img title='Delete storage' class='img_functions' src='/static/img/delete.png'"+
-                            "onClick='delete_storage(" + storage_id + ")' /></td>" +
-                "</tr><tr>" +
-                    "<td class='img_rescan_storage'>" +
-                        "<img title='Force Rescan storage' class='img_functions img_force' " +
-                            "src='/static/img/force_rescan_storage.png' " +
-                            "onClick='rescan_storage(" + storage_id + ", true)' />" +
-                        "<br /><span class=img_description >force</span>" +
+                    "<td class='img_delete_storage'>" +
+                        "<img title='Delete storage' class='img_functions' src='/static/img/delete.png' "+
+                            "onClick='delete_storage(" + storage_id + ")' />" +
                     "</td>" +
-                    "<td class='img_recognize_movies'>" +
-                        "<img title='Force recognize all movies' class='img_functions img_force' " +
-                            "src='/static/img/force_recognize_storage.png' " +
-                            "onClick='recognize_storage(" + storage_id + ", true)' />" +
-                        "<br /><span class=img_description >force</span>" +
+                "</tr>"+
+            "</table>" +
+            "<table class='column_function_container'>" +
+                "<tr>" +
+                    "<td class='rescan_storage '>" +
+                        //TODO: Mouseover: verbose explanation
+                        "<div class='click_function' onClick='rescan_storage(" + storage_id + ")'>" +
+                            "<img title='Rescan storage' src='/static/img/rescan_storage.png'  />" +
+                            "<span class=img_description>Rescan storage</span>"+
+                        "</div>" +
+                    "</td>" +
+                    "<td class='rescan_storage '>" +
+                        "<div class='click_function' onClick='reset_storage(" + storage_id + ")'>" +
+                            "<img title='Force Rescan storage' src='/static/img/force_rescan_storage.png' />" +
+                            "<span class=img_description>Reset storage</span>"+
+                        "</div>" +
+                    "</td>" +
+                    "<td class='recognize_movies '>" +
+                        "<div class='click_function' onClick='recognize_storage(" + storage_id + ")'>" +
+                            "<img title='Recognize unrecognized movies' src='/static/img/recognize_storage.png' />" +
+                            "<span class=img_description>Recognize all unrecognized</span>" +
+                        "</div>" +
+                    "</td>" +
+                    "<td class='recognize_movies' " +
+                        "<div class='click_function' onClick='recognize_storage(" + storage_id + ", true)'>" +
+                            "<img title='Force recognize all movies' src='/static/img/force_recognize_storage.png' />" +
+                            "<span class=img_description>Re-recognize all</span>" +
+                        "</div>" +
                     "</td>" +
                 "</tr></table>" +
             "<div id='"+base_class+"_tabulator'></div>" +
@@ -159,7 +185,7 @@ var build_newstorages_add = function(){
     $("#newstorages_container").append(
         "<div class='newstorages_0 newstorages'>" +
             "<form class='add_storage' action='add_storage'>" +
-                "<table class='column_header_container'><tr>" +
+                "<table><tr>" +
                     "<td class='submit'>" +
                         "<input type='image' name='submit' src='/static/img/add_storage.png' " +
                             "class='img_functions' alt='Submit' />" +

@@ -83,14 +83,7 @@ DATABASES = {
         'NAME': os.path.join(BASE_DIR, 'kinksorter.db'),
         'OPTIONS': {'timeout': 10},
     },
-    'API_kinkcom': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'kinksorter_app', 'apis', 'kinkcom', 'kinkyapi.db'),
-        'OPTIONS': {'timeout': 10},
-    }
 }
-DATABASE_ROUTERS = ['kinksorter_app.apis.api_router.APIRouter']
-
 
 # Password validation
 # https://docs.djangoproject.com/en/1.10/ref/settings/#auth-password-validators

@@ -24,8 +24,8 @@ class KinkRecognition:
         if shootid:
             results = self.api.query('shoot', 'shootid', shootid)
 
-        if results is not None and results.count() == 1:
-            return results[0].shootid
+        if results is not None and len(results) > 0:
+            return results[0].get('shootid')
         else:
             logging.info('"{}" - Nothing found, leaving untagged'.format(movie.file_properties.file_name))
 

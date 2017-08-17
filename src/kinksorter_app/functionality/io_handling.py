@@ -1,7 +1,7 @@
 
 from django.http.response import HttpResponse, JsonResponse
 
-from kinksorter_app.functionality.storage_handling import StorageHandler, change_storage_name, \
+from kinksorter_app.functionality.storage_handling import StorageHandler, \
     get_storage, get_storage_ids, get_storage_data
 from kinksorter_app.functionality.movie_handling import RecognitionHandler, delete_movie, merge_movie, get_movie, \
     remove_movie_from_main
@@ -21,36 +21,62 @@ def add_new_storage_request(request):
 
 
 def update_storage_request(request):
+    storage_handler = get_storage_by_id(request)
+    if type(storage_handler) == HttpResponse:
+        return storage_handler
+
+    storage_handler.scan()
+    return HttpResponse('Storage updating', status=200)
+
+
+def reset_storage_request(request):
+    storage_handler = get_storage_by_id(request)
+    if type(storage_handler) == HttpResponse:
+        return storage_handler
+
+    if storage_handler.reset():
+        return HttpResponse('Storage resetting', status=200)
+    return HttpResponse('Error resetting storage', status=500)
+
+
+def change_storage_name_request(request):
+    storage_handler = get_storage_by_id(request)
+    if type(storage_handler) == HttpResponse:
+        return storage_handler
+
+    new_storage_name = request.GET.get('new_storage_name')
+    if new_storage_name:
+        if storage_handler.change_name(new_storage_name):
+            return HttpResponse('Storage name changed', status=200)
+
+
+def get_storage_by_id(request):
     storage_id = request.GET.get('storage_id')
     if storage_id and storage_id.isdigit():
         stor_ = StorageHandler(int(storage_id))
         if stor_:
-            stor_.scan()
-            return HttpResponse('Storage updating', status=200)
+            return stor_
         return HttpResponse('Storage does not exist', status=406)
-    return HttpResponse('Storage-ID malformed', status=400)
-
-
-def change_storage_name_request(request):
-    storage_id = request.GET.get('storage_id')
-    new_storage_name = request.GET.get('new_storage_name')
-    if storage_id and storage_id.isdigit() and new_storage_name:
-        if change_storage_name(int(storage_id), new_storage_name):
-            return HttpResponse('Storage name changed', status=200)
-        return HttpResponse('Storage does not exist', status=406)
-
     return HttpResponse('Storage-ID malformed', status=400)
 
 
 def delete_storage_request(request):
-    storage_id = request.GET.get('storage_id')
-    if storage_id and storage_id.isdigit():
-        stor_ = StorageHandler(int(storage_id))
-        if stor_:
-            stor_.delete()
-            return HttpResponse('Storage deleted', status=200)
-        return HttpResponse('Storage does not exist', status=406)
-    return HttpResponse('Storage-ID malformed', status=400)
+    storage_handler = get_storage_by_id(request)
+    if type(storage_handler) == HttpResponse:
+        return storage_handler
+
+    storage_handler.delete()
+    return HttpResponse('Storage deleted', status=200)
+
+
+def get_storage_request(request):
+    storage_handler = get_storage_by_id(request)
+    if type(storage_handler) == HttpResponse:
+        return storage_handler
+
+    data = get_storage_data(storage=storage_handler.storage)
+    return JsonResponse(data, safe=False)
+
 
 
 def recognize_movie_request(request):
@@ -97,18 +123,6 @@ def merge_movie_request(request):
         return HttpResponse('No Movie with that id found', status=404)
 
     return JsonResponse(movie.serialize(), safe=False)
-
-
-def get_storage_request(request):
-    storage_id = request.GET.get('storage_id')
-    if storage_id and storage_id.isdigit():
-        data = get_storage_data(storage_id=storage_id)
-        if data is None:
-            return HttpResponse('No storage with that id found', status=404)
-
-        return JsonResponse(data, safe=False)
-
-    return HttpResponse('Storage-ID malformed', status=400)
 
 
 def get_storage_ids_request(request):

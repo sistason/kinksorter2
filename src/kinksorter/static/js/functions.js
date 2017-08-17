@@ -77,6 +77,7 @@ var delete_storage = function(storage_id){
         success: function(){
             $("#newstorages_" + storage_id + "_tabulator").tabulator('clearData"');
             $("div.newstorages_" + storage_id).empty();
+            //TODO: remove all storage-movies from MainStorage
         }
     });
 };
@@ -93,34 +94,38 @@ var format_date = function(cell, params){
 var update_tables = function(event){
     var storage_ids = newstorage_table_ids.concat([0]);
     storage_ids.forEach(function (storage_id) {
-        $.ajax({
-            url: "/storage/get_storage",
-            data: {"storage_id": storage_id},
-            dataType: 'json',
-            success: function(data, textStats, jqXHR){
-                parse_update_tables_response(data, storage_id);
-            }
-        });
+        console.log('updating table', storage_id);
+        update_table(storage_id);
+    });
+};
+var update_table = function(storage_id){
+    $.ajax({
+        url: "/storage/get_storage",
+        data: {"storage_id": storage_id},
+        dataType: 'json',
+        success: function(data, textStats, jqXHR){
+            parse_update_tables_response(data, storage_id);
+        }
     });
 };
 var parse_update_tables_response = function(data, storage_id){
-    var tabulator;
+    var $tabulator;
     if (storage_id == 0) {
         if (! mainstorage_built){
             setTimeout(function(){parse_update_tables_response(data, storage_id)}, 10);
             return;
         }
-        tabulator = $("#mainstorage_tabulator");
+        $tabulator = $("#mainstorage_tabulator");
     }
     else {
         if (! newstorages_built){
                 setTimeout(function(){parse_update_tables_response(data, storage_id)}, 10);
                 return;
         }
-        tabulator = $("#newstorages_" + storage_id + "_tabulator");
+        $tabulator = $("#newstorages_" + storage_id + "_tabulator");
     }
 
-    var table_data = tabulator.tabulator('getData');
+    var table_data = $tabulator.tabulator('getData');
     var table_length = table_data.length;
     var modified_data = [], added_data = [], deleted_data = table_data;
 
@@ -128,7 +133,6 @@ var parse_update_tables_response = function(data, storage_id){
         var current_element = data[i];
 
         if (current_element.type == 'storage') {
-            storage_table_storage_data[storage_id] = current_element;
             if (storage_id == 0)
                 set_mainstorage_header(current_element);
             else
@@ -164,15 +168,14 @@ var parse_update_tables_response = function(data, storage_id){
     }
     if (table_length == added_data.length && modified_data.length == 0){
         // initial load
-        tabulator.tabulator("setData", added_data);
+        $tabulator.tabulator("setData", added_data);
     }
     else {
         var modified_and_added_data = modified_data.concat(added_data);
-        tabulator.tabulator("updateOrAddData", modified_and_added_data);
+        $tabulator.tabulator("updateOrAddData", modified_and_added_data);
     }
     for (d=0; d<deleted_data.length; d++)
-        tabulator.tabulator("deleteRow", deleted_data[d].id);
-
+        $tabulator.tabulator("deleteRow", deleted_data[d].id);
 };
 
 
@@ -188,7 +191,7 @@ $(document).ready(function(){
             build_mainstorage();
             build_newstorages();
 
-            //setInterval(update_tables, 10000);
+            //setInterval(update_tables, 20000);
         }
     });
 

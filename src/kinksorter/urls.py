@@ -11,6 +11,7 @@ urlpatterns += [
     url(r'^storage/add/?$', io_handling.add_new_storage_request),
     url(r'^storage/delete/?$', io_handling.delete_storage_request),
     url(r'^storage/update/?$', io_handling.update_storage_request),
+    url(r'^storage/reset/?$', io_handling.reset_storage_request),
     url(r'^storage/change_name/?$', io_handling.change_storage_name_request),
     url(r'^storage/get_storage/?$', io_handling.get_storage_request),
     url(r'^storage/get_storage_ids/?$', io_handling.get_storage_ids_request),

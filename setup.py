@@ -66,12 +66,11 @@ class Setup:
 
     def _install_kinkyapi(self):
         logging.info('Making sure the KinkyAPI is up-to-date...')
-        kinkcom_db_gz = os.path.join(self.install_path, "src", "kinksorter_app", "apis", "kinkcom", "kinkyapi.db.gz")
-        if not os.path.exists(kinkcom_db_gz[:-3]):
-            cmd = ["wget", "-O", kinkcom_db_gz, "https://www.kinkyapi.site/kinkcom/dump_sqlite"]
+        kinkcom_db = os.path.join(self.install_path, "src", "kinksorter_app", "apis", "kinkcom", "kinkyapi.json")
+        if not os.path.exists(kinkcom_db[:-4]):
+            cmd = ["wget", "-O", kinkcom_db, "https://www.kinkyapi.site/kinkcom/dump_all"]
             if not self._run_cmd(cmd):
                 return False
-            self._run_cmd(["gunzip", kinkcom_db_gz])
 
         return True
 
