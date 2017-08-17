@@ -31,12 +31,11 @@ class KinkRecognitionMethods:
             return [cv2.imread(t, 0) for t in sorted(kink_templates_)]
         return []
 
-    def get_shootids_from_filename(self, file_path):
-        base_name = os.path.basename(file_path)
+    def get_shootids_from_filename(self, file_name):
         search_shootid = []
 
         # \D does not match ^|$, so we pad it with something irrelevant
-        search_name = '%' + base_name + '%'
+        search_name = '%' + file_name + '%'
 
         search_match = 1
         while search_match:

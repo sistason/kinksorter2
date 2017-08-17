@@ -50,7 +50,7 @@ var format_options = function(cell, params){
         });
         var $add = $('<img>', {alt: "Add", src: '/static/img/move_to_main.png', 'class': 'img_options'});
         $add.click(function(){
-            merge_movie(cell.getRow(), params.storage_id)
+            merge_movie(cell.getRow())
         });
         if (cell.getData().status == 'okay') {
             $container.append($add);

@@ -2,7 +2,7 @@ var newstorages_built = false;
 var newstorage_table_ids = [];
 var storage_table_storage_data = {};
 
-var merge_movie = function(row, storage_id){
+var merge_movie = function(row){
     var movie_id = row.getData().movie_id;
     $.ajax({
         url: '/movie/merge',
@@ -16,25 +16,65 @@ var merge_movie = function(row, storage_id){
      });
 };
 
+var merge_multiple_movies = function(rows){
+    var movie_ids = [];
+    for (var key in rows)
+        if (rows.hasOwnProperty(key))
+            movie_ids.push(key);
+
+    $.ajax({
+        url: '/movie/merge_multiple',
+        data: {movie_ids: movie_ids},
+        success: function(data){
+            data.forEach(function(movie_id) {
+                var row = rows[movie_id];
+                $("#mainstorage_tabulator").tabulator("addRow", row.getData(), true);
+                row.update({'status': 'in_main', 'movie_id': -1});
+                row.update({'movie_id': movie_id});
+            });
+        }
+    });
+
+};
+
+var recognize_multiple = function(rows){
+    var movie_ids = [];
+    for (var key in rows)
+        if (rows.hasOwnProperty(key))
+            movie_ids.push(key);
+
+    $.ajax({
+        type: 'GET',
+        url: '/movie/recognize_multiple',
+        data: {movie_ids: movie_ids},
+        success: function(data){
+            data.forEach(function(movie) {
+                var row = rows[movie.movie_id];
+                row.update({'movie_id': -1});
+                row.update(data);
+                //FIXME: Check this works
+            });
+        }
+    });
+};
+
 var merge_good_movies = function(storage_id){
     var rows = $("#newstorages_"+storage_id+"_tabulator").tabulator("getRows", true);
 
+    var good_rows = {};
     rows.forEach(function(row){
         var row_data = row.getData();
-        if (row_data.status == 'okay'){
-            merge_movie(row, storage_id);
-        }
+        if (row_data.status == 'okay')
+            good_rows[row.getData().movie_id] = row;
     });
-    //$("#mainstorage_tabulator").tabulator("redraw");
+
+    merge_multiple_movies(good_rows);
 };
 
 var rescan_storage = function(storage_id) {
-    // Run /update
     $.ajax({
         url: "/storage/update",
-        data: {storage_id: storage_id},
-        success: function(data) {
-        }
+        data: {storage_id: storage_id}
     });
 };
 
@@ -51,9 +91,35 @@ var reset_storage = function(storage_id) {
 };
 
 var recognize_storage = function(storage_id, force) {
-    // Run /rec on all movies. Force removes
-    alert('recognize');
+    // Run /rec on all unrecognized movies. Force sets all movies to 0 and recognizes them
+    var $tabulator = $("#newstorages_"+storage_id+"_tabulator");
+    var rows = $tabulator.tabulator("getRows", true);
+
+    if (force){
+        $.ajax({
+            url: "/storage/rerecognize",
+            data: {storage_id: storage_id},
+            success: function(data) {
+                $tabulator.tabulator("clearData");
+                $tabulator.tabulator("setData", data);
+
+                update_tables(0);
+            }
+        });
+    }
+    else {
+        var bad_rows = {};
+        rows.forEach(function(row){
+            var row_data = row.getData();
+            if (row_data.status == 'unrecognized')
+                bad_rows[row.getData().movie_id] = row;
+        });
+
+        recognize_multiple(bad_rows);
+    }
 };
+
+
 
 var set_newstorage_header = function(current_data){
         var id_ = current_data['storage_id'];
@@ -167,13 +233,13 @@ var build_newstorage_container = function(storage_id){
                     "<td class='recognize_movies '>" +
                         "<div class='click_function' onClick='recognize_storage(" + storage_id + ")'>" +
                             "<img title='Recognize unrecognized movies' src='/static/img/recognize_storage.png' />" +
-                            "<span class=img_description>Recognize all unrecognized</span>" +
+                            "<span class=img_description>Recognize unrecognized</span>" +
                         "</div>" +
                     "</td>" +
                     "<td class='recognize_movies' " +
                         "<div class='click_function' onClick='recognize_storage(" + storage_id + ", true)'>" +
                             "<img title='Force recognize all movies' src='/static/img/force_recognize_storage.png' />" +
-                            "<span class=img_description>Re-recognize all</span>" +
+                            "<span class=img_description>Re-recognize storage</span>" +
                         "</div>" +
                     "</td>" +
                 "</tr></table>" +

@@ -42,6 +42,21 @@ class StorageHandler:
         self.scan()
         return True
 
+    def rerecognize(self):
+        mainstorage = MainStorage.objects.get()
+        unrecognized_movies = []
+        for movie in self.storage.movies.all():
+            movie.scene_properties = 0
+            movie.save()
+
+            mainstorage.movies.remove(movie)
+
+            unrecognized_movies.append(movie.serialize())
+
+            #async(self.scanner.recognize_movie, movie, APIS.get(movie.api), sync=True)
+
+        return unrecognized_movies
+
     def change_name(self, new_name):
         self.storage.name = new_name
         self.storage.save()
@@ -120,13 +135,16 @@ class MovieScanner:
 
         movie = Movie(file_properties=file_properties, api=api.name)
 
+        self.recognize_movie(movie, api)
+
+        self.storage.movies.add(movie)
+        print('ADDED MOVIE {}...'.format(movie.scene_properties))
+
+    def recognize_movie(self, movie, api):
         scene_properties = api.recognize(movie)
         if scene_properties:
             movie.scene_properties = scene_properties
         movie.save()
-
-        self.storage.movies.add(movie)
-        print('ADDED MOVIE {}...'.format(movie.scene_properties))
 
 
 class DirectoryTree:

@@ -39,6 +39,17 @@ def reset_storage_request(request):
     return HttpResponse('Error resetting storage', status=500)
 
 
+def rerecognize_storage_request(request):
+    storage_handler = get_storage_by_id(request)
+    if type(storage_handler) == HttpResponse:
+        return storage_handler
+
+    unrecognized_movies = storage_handler.rerecognize()
+    if unrecognized_movies:
+        return JsonResponse(unrecognized_movies, safe=False)
+    return HttpResponse('Error rerecognizing storage', status=500)
+
+
 def change_storage_name_request(request):
     storage_handler = get_storage_by_id(request)
     if type(storage_handler) == HttpResponse:
@@ -78,7 +89,6 @@ def get_storage_request(request):
     return JsonResponse(data, safe=False)
 
 
-
 def recognize_movie_request(request):
     movie_id = request.GET.get('movie_id')
 
@@ -96,6 +106,23 @@ def recognize_movie_request(request):
         return JsonResponse(recognized_movie.serialize(), safe=False)
 
     return HttpResponse('Movie could not be recognized', status=406)
+
+
+def recognize_multiple_movies_request(request):
+    movie_ids = request.GET.getlist('movie_ids[]')
+    if [m for m in movie_ids if not m.isdigit()]:
+        return HttpResponse('MovieIDs has to be a list of integers', status=400)
+
+    recognized = []
+    for movie_id in movie_ids:
+        recognition_handler = RecognitionHandler(movie_id)
+        if recognition_handler.movie is None:
+            continue
+        recognized_movie = recognition_handler.recognize()
+        if recognized_movie is not None:
+            recognized.append(recognized_movie.serialize())
+
+    return JsonResponse(recognized, safe=False)
 
 
 def delete_movie_request(request):
@@ -123,6 +150,14 @@ def merge_movie_request(request):
         return HttpResponse('No Movie with that id found', status=404)
 
     return JsonResponse(movie.serialize(), safe=False)
+
+
+def merge_multiple_movies_request(request):
+    movie_ids = request.GET.getlist('movie_ids[]')
+    if [m for m in movie_ids if not m.isdigit()]:
+        return HttpResponse('MovieIDs has to be a list of integers', status=400)
+
+    return JsonResponse([merge_movie(movie_id).id for movie_id in movie_ids], safe=False)
 
 
 def get_storage_ids_request(request):
