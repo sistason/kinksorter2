@@ -1,10 +1,11 @@
 
 from django.http.response import HttpResponse, JsonResponse
 
+
 from kinksorter_app.functionality.storage_handling import StorageHandler, \
     get_storage, get_storage_ids, get_storage_data
-from kinksorter_app.functionality.movie_handling import RecognitionHandler, delete_movie, merge_movie, get_movie, \
-    remove_movie_from_main
+from kinksorter_app.functionality.movie_handling import recognize_movie, delete_movie, merge_movie, get_movie, \
+    remove_movie_from_main, recognize_multiple
 
 
 def add_new_storage_request(request):
@@ -92,8 +93,8 @@ def get_storage_request(request):
 def recognize_movie_request(request):
     movie_id = request.GET.get('movie_id')
 
-    recognition_handler = RecognitionHandler(movie_id)
-    if recognition_handler.movie is None:
+    movie = get_movie(movie_id)
+    if movie is None:
         return HttpResponse('No Movie with that id found', status=404)
 
     new_name = request.GET.get('new_scene_name')
@@ -101,7 +102,7 @@ def recognize_movie_request(request):
     if not new_sid.isdigit():
         return HttpResponse('SceneID has to be an integer', status=400)
 
-    recognized_movie = recognition_handler.recognize(new_name=new_name, new_sid=int(new_sid))
+    recognized_movie = recognize_movie(movie, None, new_name=new_name, new_sid=int(new_sid))
     if recognized_movie is not None:
         return JsonResponse(recognized_movie.serialize(), safe=False)
 
@@ -113,15 +114,7 @@ def recognize_multiple_movies_request(request):
     if [m for m in movie_ids if not m.isdigit()]:
         return HttpResponse('MovieIDs has to be a list of integers', status=400)
 
-    recognized = []
-    for movie_id in movie_ids:
-        recognition_handler = RecognitionHandler(movie_id)
-        if recognition_handler.movie is None:
-            continue
-        recognized_movie = recognition_handler.recognize()
-        if recognized_movie is not None:
-            recognized.append(recognized_movie.serialize())
-
+    recognized = recognize_multiple(movie_ids, None)
     return JsonResponse(recognized, safe=False)
 
 

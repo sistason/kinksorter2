@@ -94,7 +94,6 @@ var format_date = function(cell, params){
 var update_tables = function(event){
     var storage_ids = newstorage_table_ids.concat([0]);
     storage_ids.forEach(function (storage_id) {
-        console.log('updating table', storage_id);
         update_table(storage_id);
     });
 };

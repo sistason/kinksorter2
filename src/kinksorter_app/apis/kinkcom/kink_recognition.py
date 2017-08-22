@@ -32,6 +32,7 @@ class KinkRecognition:
     def get_shootid(self, file_path, name_override=False):
         shootid_cv, shootid_md, shootid_nr = 0, 0, 0
         if not name_override:
+            file_name = os.path.basename(file_path)
             try:
                 shootid_cv = self.methods.get_shootid_through_image_recognition(file_path)
             except AttributeError:
@@ -40,8 +41,9 @@ class KinkRecognition:
                 shootid_md = self.methods.get_shootid_through_metadata(file_path)
             except AttributeError:
                 shootid_md = 0
+        else:
+            file_name = file_path
 
-        file_name = os.path.basename(file_path)
         shootids_nr = self.methods.get_shootids_from_filename(file_name)
         if len(shootids_nr) > 1:
             if shootid_cv and shootid_cv in shootids_nr:

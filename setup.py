@@ -85,9 +85,14 @@ class Setup:
             logging.info('Uninstall failed')
 
     def start(self):
-        os.system("/bin/bash -c 'source {0} && python3 {1} migrate -v0 && python3 {1} runserver'".format(
-                                                            os.path.join(self.install_path, "virtualenv/bin/activate"),
-                                                            os.path.join(self.install_path, 'src', 'manage.py')))
+        venv = os.path.join(self.install_path, "virtualenv/bin/activate")
+        manage = os.path.join(self.install_path, 'src', 'manage.py')
+
+        os.system("/bin/bash -c 'source {0} && python3 {1} migrate -v0".format(venv, manage))
+
+        os.system("/bin/bash -c 'source {0} && python3 {1} qcluster &'".format(venv, manage))
+
+        os.system("/bin/bash -c 'source {0} && python3 {1} runserver'".format(venv, manage))
 
 
 if __name__ == '__main__':
@@ -102,7 +107,7 @@ if __name__ == '__main__':
 
     argparser = argparse.ArgumentParser(description="Easy porn storage combining via webinterface")
     argparser.add_argument('-r', '--remove', action='store_true',
-                           help='What to do? (install, uninstall, start)')
+                           help='Uninstall kinksorter from this directory')
     argparser.add_argument('root_path', type=argcheck_dir, metavar="destination",
                            help='Set the path where the sorted storage should be created')
 

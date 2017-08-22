@@ -11,10 +11,7 @@ class BaseAPI:
     def __init__(self):
         logging.getLogger("requests").setLevel(logging.WARNING)
         self._site_capabilities = None
-
-    def get_correct_model(self):
-        """ Return the correct database-model for the API at runtime, so we avoid cyclic imports """
-        return NotImplementedError
+        self.database = {}
 
     def get_site_responsibilities(self):
         """ Get responsibilities, e.g. which directory-name (==subsite) this API is capable of """

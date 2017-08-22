@@ -1,5 +1,6 @@
 import subprocess
 import logging
+import copy
 import os
 
 from django_q.tasks import async
@@ -8,6 +9,7 @@ from django.core.serializers import serialize
 
 from kinksorter_app.models import Storage, Movie, FileProperties, MainStorage
 from kinksorter_app.apis.api_router import get_correct_api, APIS
+from kinksorter_app.functionality.movie_handling import recognize_movie, recognize_multiple
 
 
 class StorageHandler:
@@ -51,11 +53,11 @@ class StorageHandler:
 
             mainstorage.movies.remove(movie)
 
-            unrecognized_movies.append(movie.serialize())
+            unrecognized_movies.append(movie)
 
-            #async(self.scanner.recognize_movie, movie, APIS.get(movie.api), sync=True)
+        recognize_multiple(None, unrecognized_movies, wait_for_finish=False)
 
-        return unrecognized_movies
+        return [m.serialize() for m in unrecognized_movies]
 
     def change_name(self, new_name):
         self.storage.name = new_name
@@ -64,8 +66,6 @@ class StorageHandler:
 
     def scan(self):
         if self.storage is not None:
-            logging.basicConfig(format='%(message)s',
-                                level=logging.DEBUG)
             self.scanner.scan()
 
     def delete(self):
@@ -86,7 +86,7 @@ class MovieScanner:
 
     def scan(self):
         self._get_listing(self.directory_tree, recursion_depth=5)
-        async(self._scan_tree, self.directory_tree, sync=True)
+        async(self._scan_tree, self.directory_tree)
 
     def _get_listing(self, tree, recursion_depth=0):
         recursion_depth -= 1
@@ -106,6 +106,8 @@ class MovieScanner:
                 pass
 
     def _scan_tree(self, tree):
+        logging.basicConfig(format='%(message)s',
+                            level=logging.DEBUG)
         for leaf in tree.leafs:
             logging.debug('Scanning file {}...'.format(leaf.full_path[-100:]))
             if leaf.is_writeable() and leaf.is_video_file():
@@ -113,7 +115,7 @@ class MovieScanner:
                 self.add_movie(leaf, tree)
 
         for next_tree in tree.nodes:
-            self._scan_tree(next_tree)
+            async(self._scan_tree, next_tree)
 
     def add_movie(self, leaf, tree):
         api = tree.api if tree.api else self.apis.get('default', None)
@@ -134,27 +136,33 @@ class MovieScanner:
         file_properties.save()
 
         movie = Movie(file_properties=file_properties, api=api.name)
+        movie.save()
 
-        self.recognize_movie(movie, api)
+        recognize_movie(movie, None, api=api)
 
         self.storage.movies.add(movie)
-        print('ADDED MOVIE {}...'.format(movie.scene_properties))
+        logging.info('ADDED MOVIE {}...'.format(movie.scene_properties))
 
-    def recognize_movie(self, movie, api):
-        scene_properties = api.recognize(movie)
-        if scene_properties:
-            movie.scene_properties = scene_properties
-        movie.save()
+    def __deepcopy__(self, memodict=None):
+        return self
 
 
 class DirectoryTree:
-    def __init__(self, path, prev=None, api=None):
+
+    def __init__(self, path, prev=None, api=None, leafs=None, nodes=None):
         self.leafs = []
+        if leafs is not None:
+            self.leafs = leafs
         self.nodes = []
+        if nodes is not None:
+            self.nodes = nodes
 
         self.prev = prev
         self.path = path
         self.api = api
+
+    def __deepcopy__(self, memodict=None):
+        return self
 
 
 class Leaf:
@@ -180,6 +188,9 @@ class Leaf:
 
     def get_extension(self):
         return os.path.splitext(self.full_path)[-1]
+
+    def __deepcopy__(self, memodict=None):
+        return self
 
 
 def get_storage(storage_id):
