@@ -105,11 +105,11 @@ if __name__ == '__main__':
             return path.abspath(string)
         raise argparse.ArgumentTypeError('%s is no directory or isn\'t writeable' % string)
 
-    argparser = argparse.ArgumentParser(description="Easy porn storage combining via webinterface")
+    argparser = argparse.ArgumentParser(description="Easy porn directory combining via webinterface")
     argparser.add_argument('-r', '--remove', action='store_true',
                            help='Uninstall kinksorter from this directory')
     argparser.add_argument('root_path', type=argcheck_dir, metavar="destination",
-                           help='Set the path where the sorted storage should be created')
+                           help='Set the path where the sorted directory should be created')
 
     args = argparser.parse_args()
 

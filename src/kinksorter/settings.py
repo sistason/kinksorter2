@@ -25,7 +25,7 @@ SECRET_KEY = '^8wdj$q^6mp6g7z1s7nwip_ffhof4r6g)nl88dy0-u(r)(o=_n'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-DEBUG_SFW = True
+DEBUG_SFW = False
 # Use to blank most frontend NSFW-stuff for developing in public spaces
 
 ALLOWED_HOSTS = []

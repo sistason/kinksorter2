@@ -7,51 +7,59 @@ from django_q.tasks import async
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.core.serializers import serialize
 
-from kinksorter_app.models import Storage, Movie, FileProperties, MainStorage
+from kinksorter.settings import BASE_DIR
+from kinksorter_app.models import PornDirectory, Movie, FileProperties, TargetPornDirectory
 from kinksorter_app.apis.api_router import get_correct_api, APIS
 from kinksorter_app.functionality.movie_handling import recognize_movie, recognize_multiple
 
 
-class StorageHandler:
+class PornDirectoryHandler:
     scanner = None
-    storage = None
+    directory = None
 
-    def __init__(self, storage_input, name='', read_only=False):
-        if type(storage_input) == str:
-            if not os.path.exists(storage_input) or \
-               not read_only and not os.access(storage_input, os.W_OK):
+    def __init__(self, porn_directory, name='', read_only=False, init_path=None):
+        if porn_directory is None and init_path is not None:
+            if not os.path.exists(init_path) or \
+               not read_only and not os.access(init_path, os.W_OK):
                 return
 
-            if Storage.objects.filter(path=os.path.abspath(storage_input)).exists() \
-               or name and Storage.objects.filter(name=name).exists():
+            if PornDirectory.objects.filter(path=os.path.abspath(init_path)).exists() \
+               or name and PornDirectory.objects.filter(name=name).exists():
                 return
 
-            new_storage = Storage(path=os.path.abspath(storage_input), name=name, read_only=read_only)
-            new_storage.save()
+            new_porn_dir = PornDirectory(path=os.path.abspath(init_path), name=name, read_only=read_only)
+            new_porn_dir.save()
 
-            self.storage = new_storage
+            self.directory = new_porn_dir
+            self.link_porn_directory()
         else:
-            self.storage = get_storage(storage_input)
+            self.directory = get_porn_directory(porn_directory)
 
-        self.scanner = MovieScanner(self.storage, APIS)
+        self.scanner = MovieScanner(self.directory, APIS)
+
+    def link_porn_directory(self):
+        link_path = os.path.join(BASE_DIR, 'kinksorter', 'static', str(self.directory.id))
+        if os.path.exists(link_path):
+            os.unlink(link_path)
+
+        os.symlink(self.directory.path, link_path)
 
     def reset(self):
-        for movie in self.storage.movies.all():
-            #movie.mainstorage_set.delete()
+        for movie in self.directory.movies.all():
             movie.delete()
-        self.storage.save()
+        self.directory.save()
 
-        self.scan()
-        return True
+        return self.scan()
 
     def rerecognize(self):
-        mainstorage = MainStorage.objects.get()
+        target_directory = get_target_porn_directory()
         unrecognized_movies = []
-        for movie in self.storage.movies.all():
+        for movie in self.directory.movies.all():
             movie.scene_properties = 0
             movie.save()
 
-            mainstorage.movies.remove(movie)
+            if target_directory:
+                target_directory.movies.remove(movie)
 
             unrecognized_movies.append(movie)
 
@@ -60,33 +68,39 @@ class StorageHandler:
         return [m.serialize() for m in unrecognized_movies]
 
     def change_name(self, new_name):
-        self.storage.name = new_name
-        self.storage.save()
+        self.directory.name = new_name
+        self.directory.save()
         return True
 
     def scan(self):
-        if self.storage is not None:
-            self.scanner.scan()
+        if self.directory is not None:
+            return self.scanner.scan()
 
     def delete(self):
-        if self.storage is not None:
-            for movie in self.storage.movies.all():
+        if self.directory is not None:
+            for movie in self.directory.movies.all():
                 movie.delete()
-            self.storage.delete()
+            self.directory.delete()
+
+            link_path = os.path.join(BASE_DIR, 'kinksorter', 'static', str(self.directory.id))
+            try:
+                os.unlink(link_path)
+            except os.error:
+                pass
 
     def __bool__(self):
-        return self.storage is not None
+        return self.directory is not None
 
 
 class MovieScanner:
-    def __init__(self, storage, apis):
+    def __init__(self, porn_directory, apis):
         self.apis = apis
-        self.storage = storage
-        self.directory_tree = DirectoryTree(storage.path)
+        self.porn_directory = porn_directory
+        self.directory_tree = DirectoryTree(porn_directory.path)
 
     def scan(self):
         self._get_listing(self.directory_tree, recursion_depth=5)
-        async(self._scan_tree, self.directory_tree)
+        return async(self._scan_tree, self.directory_tree)
 
     def _get_listing(self, tree, recursion_depth=0):
         recursion_depth -= 1
@@ -140,7 +154,7 @@ class MovieScanner:
 
         recognize_movie(movie, None, api=api)
 
-        self.storage.movies.add(movie)
+        self.porn_directory.movies.add(movie)
         logging.info('ADDED MOVIE {}...'.format(movie.scene_properties))
 
     def __deepcopy__(self, memodict=None):
@@ -193,58 +207,37 @@ class Leaf:
         return self
 
 
-def get_storage(storage_id):
+def get_porn_directory(directory_id):
     try:
-        storage_id = int(storage_id)
-        if storage_id == 0:
-            return get_main_storage()
-        return Storage.objects.get(id=storage_id)
+        return PornDirectory.objects.get(id=int(directory_id))
     except ObjectDoesNotExist:
         return None
     except ValueError:
         return False
 
 
-def get_main_storage():
-    storage = None
+def get_target_porn_directory():
     try:
-        storage = MainStorage.objects.get_or_create()[0]
+        return TargetPornDirectory.objects.get_or_create()[0]
     except MultipleObjectsReturned:
-        for stor_ in MainStorage.objects.order_by('movies__count'):
-            if storage is None:
-                storage = stor_
-            else:
-                stor_.delete()
-
-    return storage
+        # Race Condition only
+        return
 
 
-def get_storage_data(storage=None, storage_id=''):
-    if storage is None:
-        if storage_id == '':
+def get_porn_directory_info_and_content(porn_directory=None, porn_directory_id=''):
+    if porn_directory is None:
+        if porn_directory_id == '':
             return None
-        storage = get_storage(storage_id)
-        if storage is None or storage is False:
-            return storage
+        porn_directory = get_porn_directory(porn_directory_id)
+        if porn_directory is None or porn_directory is False:
+            return porn_directory
 
-    storage_id = storage.id if type(storage) is Storage else 0
-
-    stor = {'storage_path': storage.path,
-            'storage_date': storage.date_added,
-            'storage_id': storage_id,
-            'storage_movies_count': storage.movies.count(),
-            'type': 'storage'
-            }
-    if int(storage_id) != 0:
-        stor['storage_name'] = storage.name
-        stor['storage_read_only'] = storage.read_only
-
-    return [stor] + get_movies_of_storage(storage)
+    return [porn_directory.serialize()] + get_movies_of_directory(porn_directory)
 
 
-def get_movies_of_storage(storage):
-    return [movie.serialize() for movie in storage.movies.all()]
+def get_movies_of_porn_directory(porn_directory):
+    return [movie.serialize() for movie in porn_directory.movies.all()]
 
 
-def get_storage_ids():
-    return [s.id for s in Storage.objects.only('pk')]
+def get_porn_directory_ids():
+    return [s.id for s in PornDirectory.objects.only('pk')]

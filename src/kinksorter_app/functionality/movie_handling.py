@@ -3,7 +3,8 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from django_q.tasks import async, Iter, result, fetch
 from kinksorter_app.apis.api_router import APIS
-from kinksorter_app.models import Storage, Movie, FileProperties, MainStorage
+
+from kinksorter_app.models import Movie, FileProperties, PornDirectory
 
 
 def recognize_multiple(movie_ids, movies=None, wait_for_finish=True):
@@ -69,20 +70,19 @@ def delete_movie(movie_id):
     return bool([movie.delete() for movie in Movie.objects.filter(id=movie_id)])
 
 
-def remove_movie_from_main(movie_id):
+def remove_movie_from_target(movie_id, target_porn_directory):
     try:
         movie = get_movie(movie_id)
-        mainstorage = MainStorage.objects.get()
-        if movie:
-            return mainstorage.movies.remove(movie)
+        if movie and target_porn_directory:
+            return target_porn_directory.movies.remove(movie)
     except (ObjectDoesNotExist, ValueError):
         return None
 
 
-def merge_movie(movie_id):
+def merge_movie(movie_id, target_porn_directory):
     movie = get_movie(movie_id)
-    if movie is not None:
-        MainStorage.objects.get().movies.add(movie)
+    if movie is not None and target_porn_directory is not None:
+        target_porn_directory.movies.add(movie)
         return movie
 
 

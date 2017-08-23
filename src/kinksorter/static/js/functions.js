@@ -1,3 +1,4 @@
+/*
 var show_tooltips = function(cell) {
         return cell.getData().full_path;
     };
@@ -6,11 +7,20 @@ var format_row = function(row){
     row.getElement().css({"background-color": color[row.getData().status]});
 };
 var delete_movie = function(row) {
+    var movie_id = row.getData().movie_id;
     $.ajax({
         url: '/movie/delete',
-        data: {movie_id: row.getData().movie_id},
+        data: {movie_id: movie_id},
         success: function(data){
             row.delete();
+            var mainrows = $("#mainstorage_tabulator").tabulator("getRows");
+            for (var i=0; i<mainrows.length; i++){
+                var mainrow = mainrows[i];
+                if (mainrow.getData().movie_id == movie_id) {
+                    mainrow.delete();
+                    break;
+                }
+            }
         }
     });
 };
@@ -61,11 +71,14 @@ var format_options = function(cell, params){
         $del.attr({alt: "Remove", src: '/static/img/remove_from_main.png', 'class': 'img_options'});
         $del.click(function(){remove_movie_from_main(cell.getRow())});
     }
+
+    var $watch = $('<img>', {alt: "Watch", src: '/static/img/watch.png', 'class': 'img_options'});
+    $watch.click(function(){
+        window.location.href = cell.getData().watch_scene;
+    });
+
     $container.append($del);
     $container.append('&nbsp;');
-
-    var $watch = $('<a>', {href: cell.getData().watch_scene});
-    $watch.append($('<img>', {src: '/static/img/watch.png', 'class': 'img_options'}));
     $container.append($watch);
 
     return $container;
@@ -75,9 +88,14 @@ var delete_storage = function(storage_id){
         url: '/storage/delete',
         data: {storage_id: storage_id},
         success: function(){
-            $("#newstorages_" + storage_id + "_tabulator").tabulator('clearData"');
+            $("#newstorages_" + storage_id + "_tabulator").tabulator('clearData');
             $("div.newstorages_" + storage_id).empty();
-            //TODO: remove all storage-movies from MainStorage
+
+            $("#mainstorage_tabulator").tabulator("getRows").forEach(function(mainrow){
+                if (mainrow.getData().storage_id == storage_id)
+                    mainrow.delete();
+            });
+            console.log('here');
         }
     });
 };
@@ -88,6 +106,9 @@ var format_date = function(cell, params){
 
     var date = new Date(ts*1000);
     return date.toISOString().slice(0,10);
+};
+var watch_video = function(e, cell){
+
 };
 
 // TODO: check if updating breaks editing. Shouldn't.
@@ -124,12 +145,14 @@ var parse_update_tables_response = function(data, storage_id){
         $tabulator = $("#newstorages_" + storage_id + "_tabulator");
     }
 
+    console.log('parse_update_begin');
     var table_data = $tabulator.tabulator('getData');
     var table_length = table_data.length;
     var modified_data = [], added_data = [], deleted_data = table_data;
 
     for (var i=0; i<data.length; i++){
         var current_element = data[i];
+        console.log(current_element);
 
         if (current_element.type == 'storage') {
             if (storage_id == 0)
@@ -236,3 +259,4 @@ $(document).ready(function(){
         return window.confirm("Are you sure to delete that?");
     });
 });
+*/

@@ -35,17 +35,17 @@ class Movie(models.Model):
                     logging.warning('Multiple scenes for shootid {} found! ({})'.format(self.scene_properties, scene))
                 scene = scene[0]
 
-        if status == 'okay' and self.mainstorage_set.exists():
-            status = 'in_main'
+        if status == 'okay' and self.targetporndirectory_set.exists():
+            status = 'in_target'
 
-        new_storage = self.storage_set.get()
+        porn_directory = self.porndirectory_set.get()
         return {
-                'storage_name': new_storage.name,
-                'storage_id': new_storage.id,
+                'directory_name': porn_directory.name,
+                'directory_id': porn_directory.id,
                 'movie_id': self.id,
                 'api': '' if DEBUG_SFW else self.api,
                 'full_path': self.file_properties.full_path,
-                'watch_scene': 'file://{}'.format(self.file_properties.full_path),
+                'watch_scene': '/static/{}/'.format(porn_directory.id, self.file_properties.relative_path),
                 'title': '' if DEBUG_SFW else (scene.get('title') if 'title' in scene else self.file_properties.file_name),
                 'scene_site': '' if DEBUG_SFW else scene.get('site', {}).get('name'),
                 'scene_date': scene.get('date'),
@@ -54,16 +54,30 @@ class Movie(models.Model):
         }
 
 
-class Storage(models.Model):
-    path = models.CharField(max_length=500)
-    name = models.CharField(max_length=100, default='<Storage>', null=True)
-    read_only = models.BooleanField(default=True)
-    date_added = models.DateTimeField(default=datetime.datetime.now)
-    movies = models.ManyToManyField(Movie)
-
-
-class MainStorage(models.Model):
+class TargetPornDirectory(models.Model):
                                                     #manage.py,src, .kinksorter
     path = models.CharField(default=path.join(BASE_DIR, '..', '..', '..'), max_length=500)
     date_added = models.DateTimeField(default=datetime.datetime.now)
     movies = models.ManyToManyField(Movie)
+
+    def serialize(self):
+        return {
+            'directory_path': self.path,
+            'directory_date': self.date_added,
+            'directory_id': self.id,
+            'directory_movies_count': self.movies.count(),
+            'type': 'directory',
+            'is_target': True
+        }
+
+
+class PornDirectory(TargetPornDirectory):
+    name = models.CharField(max_length=100, default='<Storage>', null=True)
+    is_read_only = models.BooleanField(default=True)
+
+    def serialize(self):
+        base_ = super(self).serialize()
+        base_['is_target'] = False
+        base_['directory_name'] = self.name
+        base_['directory_read_only'] = self.is_read_only
+        return base_

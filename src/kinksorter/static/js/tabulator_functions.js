@@ -1,3 +1,4 @@
+/*
 var newstorages_built = false;
 var newstorage_table_ids = [];
 var storage_table_storage_data = {};
@@ -119,9 +120,8 @@ var recognize_storage = function(storage_id, force) {
     }
 };
 
-
-
 var set_newstorage_header = function(current_data){
+    //TODO: jqueryize
         var id_ = current_data['storage_id'];
         var new_column_header = "Storage <span contenteditable class='storage_name''>" +
             current_data['storage_name'] + "</span><br /><span class='storage_params'> (" +
@@ -184,7 +184,7 @@ var add_storage = function(e) {
 
             build_newstorage_container(storage_id);
             build_newstorage_tabulator(storage_id);
-            parse_update_tables_response(data, storage_id);
+            parse_update_tables_response([data], storage_id);
         },
         error: function(xhr, status, error){
            //TODO: show status/errors
@@ -192,7 +192,6 @@ var add_storage = function(e) {
     });
     e.preventDefault();
 };
-
 
 var build_newstorage_container = function(storage_id){
     var base_class = "newstorages_" + storage_id;
@@ -276,6 +275,7 @@ var build_newstorages = function(){
         build_newstorage_container(storage_id);
         build_newstorage_tabulator(storage_id);
     }
+    newstorages_built = true;
 };
 
 var build_newstorage_tabulator = function(storage_id){
@@ -292,15 +292,47 @@ var build_newstorage_tabulator = function(storage_id){
 
         columns: [
                 {title: "", field: 'movie_id', formatter: format_options, minWidth: 65, width: 65,
-                    formatterParams: {storage_id: storage_id}, headerSort: false, frozen: true},
+                    formatterParams: {storage_id: storage_id}, headerSort: false, frozen: true,
+                    cellClick: watch_video},
                 {title: 'Title', field: "title", formatter: "plaintext", editor: true, frozen: true,
                     minWidth: 300, variableHeight: true},
                 {title: "ID", field: "scene_id", editor: true, minWidth: 60, width: 60},
                 {title: "Date", field: "scene_date", formatter: format_date, minWidth: 95, width: 95},
                 {title: "Site", field: "scene_site", width: 150},
                 {title: "API", field: "api", minWidth: 80, width: 80}
-        ],
-        tableBuilt: function(){newstorages_built = true;}
+        ]
     });
 };
+*/
 
+var mainstorage_built = false;
+var set_mainstorage_header = function(options) {};
+
+
+var build_mainstorage = function() {
+    $("#mainstorage_tabulator").tabulator({
+        movableColumns: true,
+        fitColumns: true,
+
+        cellEdited: modify_movie,
+
+        tooltips: show_tooltips,
+
+        columns: [
+            {title: "", field: 'movie_id', formatter: format_options, minWidth: 48, width: 48,
+                formatterParams: {storage_id: 0}, headerSort: false, frozen: true,
+                cellClick: watch_video},
+            {title: 'Title', field: "title", formatter: "plaintext", editor: true, frozen: true,
+                minWidth: 300, variableHeight: true},
+            {title: "ID", field: "scene_id", editor: true, minWidth: 60, width: 60},
+            {title: "Date", field: "scene_date", formatter: format_date, minWidth: 95, width: 95},
+            {title: "Site", field: "scene_site", width: 150},
+            {title: "API", field: "api", minWidth: 80, width: 80},
+            {title: "Storage", field: "storage_name", minWidth: 100, width: 100},
+
+            {title: 'Status', field: "status", visible: false},
+            {title: 'Movie ID', field: "movie_id", visible: false}
+        ],
+        tableBuilt: function(){mainstorage_built = true;}
+    });
+};
