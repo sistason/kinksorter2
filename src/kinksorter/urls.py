@@ -1,11 +1,11 @@
 from django.conf.urls import url
 
-import kinksorter_app.functionality.io_handling_movie
 from kinksorter_app.functionality import io_handling_directory, io_handling_movie
 from kinksorter_app import views
 
 urlpatterns = [
     url(r'^$', views.index),
+    url(r'^play_video/(?P<movie_id>\d+)/?$', views.play_video),
 ]
 
 urlpatterns += [
@@ -20,12 +20,13 @@ urlpatterns += [
 ]
 
 urlpatterns += [
-    url(r'^movie/recognize/?$', kinksorter_app.functionality.io_handling_movie.recognize_movie_request),
+    url(r'^movie/recognize/?$', io_handling_movie.recognize_movie_request),
     url(r'^movie/recognize_multiple/?$',
-        kinksorter_app.functionality.io_handling_movie.recognize_multiple_movies_request),
-    url(r'^movie/delete/?$', kinksorter_app.functionality.io_handling_movie.delete_movie_request),
+        io_handling_movie.recognize_multiple_movies_request),
+    url(r'^movie/delete/?$', io_handling_movie.delete_movie_request),
     url(r'^movie/remove_from_main/?$', io_handling_movie.remove_movie_from_target_request),
-    url(r'^movie/merge/?$', kinksorter_app.functionality.io_handling_movie.merge_movie_request),
-    url(r'^movie/merge_multiple/?$', kinksorter_app.functionality.io_handling_movie.merge_multiple_movies_request),
-    url(r'^movie/get/?$', kinksorter_app.functionality.io_handling_movie.get_movie_request),
+    url(r'^movie/merge/?$', io_handling_movie.merge_movie_request),
+    url(r'^movie/merge_multiple/?$', io_handling_movie.merge_multiple_movies_request),
+    url(r'^movie/get/?$', io_handling_movie.get_movie_request),
 ]
+

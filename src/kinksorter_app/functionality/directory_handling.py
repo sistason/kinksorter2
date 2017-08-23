@@ -7,7 +7,7 @@ from django_q.tasks import async
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.core.serializers import serialize
 
-from kinksorter.settings import BASE_DIR
+from kinksorter.settings import DIRECTORY_LINKS
 from kinksorter_app.models import PornDirectory, Movie, FileProperties, TargetPornDirectory
 from kinksorter_app.apis.api_router import get_correct_api, APIS
 from kinksorter_app.functionality.movie_handling import recognize_movie, recognize_multiple
@@ -27,7 +27,7 @@ class PornDirectoryHandler:
                or name and PornDirectory.objects.filter(name=name).exists():
                 return
 
-            new_porn_dir = PornDirectory(path=os.path.abspath(init_path), name=name, read_only=read_only)
+            new_porn_dir = PornDirectory(path=os.path.abspath(init_path), name=name, is_read_only=read_only)
             new_porn_dir.save()
 
             self.directory = new_porn_dir
@@ -38,7 +38,7 @@ class PornDirectoryHandler:
         self.scanner = MovieScanner(self.directory, APIS)
 
     def link_porn_directory(self):
-        link_path = os.path.join(BASE_DIR, 'kinksorter', 'static', str(self.directory.id))
+        link_path = os.path.join(DIRECTORY_LINKS, str(self.directory.id))
         if os.path.exists(link_path):
             os.unlink(link_path)
 
@@ -82,7 +82,7 @@ class PornDirectoryHandler:
                 movie.delete()
             self.directory.delete()
 
-            link_path = os.path.join(BASE_DIR, 'kinksorter', 'static', str(self.directory.id))
+            link_path = os.path.join(DIRECTORY_LINKS, str(self.directory.id))
             try:
                 os.unlink(link_path)
             except os.error:
@@ -141,7 +141,7 @@ class MovieScanner:
             logging.debug('    Duplicate movie.')
             return
 
-        relative_path = leaf.full_path[len(self.directory_tree.path):]
+        relative_path = leaf.full_path[len(self.directory_tree.path)+1:]
         file_properties = FileProperties(full_path=leaf.full_path,
                                          file_name=leaf.get_file_name(),
                                          file_size=leaf.get_file_size(),
@@ -209,6 +209,9 @@ class Leaf:
 
 def get_porn_directory(directory_id):
     try:
+        directory_id = int(directory_id)
+        if directory_id == 0:
+            return get_target_porn_directory()
         return PornDirectory.objects.get(id=int(directory_id))
     except ObjectDoesNotExist:
         return None
@@ -232,7 +235,9 @@ def get_porn_directory_info_and_content(porn_directory=None, porn_directory_id='
         if porn_directory is None or porn_directory is False:
             return porn_directory
 
-    return [porn_directory.serialize()] + get_movies_of_directory(porn_directory)
+    directory_info = porn_directory.serialize()
+    directory_info['movies'] = get_movies_of_porn_directory(porn_directory)
+    return directory_info
 
 
 def get_movies_of_porn_directory(porn_directory):

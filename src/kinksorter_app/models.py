@@ -3,7 +3,7 @@ import datetime
 from os import path
 import logging
 
-from kinksorter.settings import BASE_DIR, DEBUG_SFW
+from kinksorter.settings import BASE_DIR, DEBUG_SFW, DIRECTORY_STATIC_LINK_NAME, STATIC_URL
 from kinksorter_app.apis.api_router import APIS
 
 
@@ -42,16 +42,20 @@ class Movie(models.Model):
         return {
                 'directory_name': porn_directory.name,
                 'directory_id': porn_directory.id,
+                'type': 'movie',
                 'movie_id': self.id,
                 'api': '' if DEBUG_SFW else self.api,
                 'full_path': self.file_properties.full_path,
-                'watch_scene': '/static/{}/'.format(porn_directory.id, self.file_properties.relative_path),
                 'title': '' if DEBUG_SFW else (scene.get('title') if 'title' in scene else self.file_properties.file_name),
                 'scene_site': '' if DEBUG_SFW else scene.get('site', {}).get('name'),
                 'scene_date': scene.get('date'),
                 'scene_id': scene.get('shootid'),
                 'status': status
         }
+
+    def get_video_path(self):
+        return '{}{}/{}/{}'.format(STATIC_URL, DIRECTORY_STATIC_LINK_NAME,
+                                   self.porndirectory_set.get().id, self.file_properties.relative_path)
 
 
 class TargetPornDirectory(models.Model):
@@ -62,22 +66,28 @@ class TargetPornDirectory(models.Model):
 
     def serialize(self):
         return {
-            'directory_path': self.path,
-            'directory_date': self.date_added,
-            'directory_id': self.id,
-            'directory_movies_count': self.movies.count(),
-            'type': 'directory',
+            'porn_directory_path': self.path,
+            'porn_directory_date': self.date_added,
+            'porn_directory_id': 0,
+            'porn_directory_movies_count': self.movies.count(),
             'is_target': True
         }
 
 
-class PornDirectory(TargetPornDirectory):
-    name = models.CharField(max_length=100, default='<Storage>', null=True)
+class PornDirectory(models.Model):
+    name = models.CharField(max_length=100, default='<PornDirectory>')
+    path = models.CharField(max_length=500)
+    date_added = models.DateTimeField(default=datetime.datetime.now)
+    movies = models.ManyToManyField(Movie)
     is_read_only = models.BooleanField(default=True)
 
     def serialize(self):
-        base_ = super(self).serialize()
-        base_['is_target'] = False
-        base_['directory_name'] = self.name
-        base_['directory_read_only'] = self.is_read_only
-        return base_
+        return {
+            'porn_directory_name': self.name,
+            'porn_directory_path': self.path,
+            'porn_directory_date': self.date_added,
+            'porn_directory_id': self.id,
+            'porn_directory_read_only': self.is_read_only,
+            'porn_directory_movies_count': self.movies.count(),
+            'is_target': False
+        }

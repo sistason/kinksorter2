@@ -9,19 +9,19 @@ body {
 .stopfloater {
     clear: both;
 }
-.delete_storage {
+.delete_porn_directory {
     color: red;
     text-align: right;
 }
 
-#mainstorage_container {
+#target_porn_directory_container {
     float: left;
     width:48%;
     padding-right: 2px;
     padding-left: 2px;
 }
 
-#newstorages_container {
+#porn_directory_tables_container {
     float: right;
     width: 48%;
     padding-right: 2px;
@@ -60,7 +60,7 @@ body {
     width: 100%;
 }
 
-.newstorages {
+.porn_directory {
     /*border: inset thin grey;*/
 }
 
@@ -82,18 +82,18 @@ body {
     text-align: center;
 }
 
-.column_header_container .storage_name {
+.column_header_container .porn_directory_name {
     font-weight: bold;
 }
-.column_header_container .storage_params {
+.column_header_container .porn_directory_params {
     font-size: small;
 }
-.column_header_container .img_add_storage {
+.column_header_container .img_add_porn_directory {
     text-align: left;
     width: 1%;
     padding-right: 10px;
 }
-.column_header_container .img_delete_storage {
+.column_header_container .img_delete_porn_directory {
     text-align: right;
     width: 1%;
     padding-left: 10px;
@@ -117,14 +117,14 @@ body {
     font-size: x-small;
 }
 
-.add_storage .input_name {
+.add_porn_directory .input_name {
     width: 25%;
     line-height: normal;
 }
-.add_storage .input_path {
+.add_porn_directory .input_path {
     width: 45%;
     line-height: normal;
 }
-.add_storage label {
+.add_porn_directory label {
     font-size: small;
 }

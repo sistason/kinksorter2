@@ -11,7 +11,8 @@ def add_new_porn_directory_request(request):
 
     porn_directory_name = request.GET.get('porn_directory_name')
     porn_directory_read_only = True if request.GET.get('porn_directory_read_only') else False
-    dir_handler = PornDirectoryHandler(porn_directory_path, name=porn_directory_name, read_only=porn_directory_read_only)
+    dir_handler = PornDirectoryHandler(None, init_path=porn_directory_path,
+                                       name=porn_directory_name, read_only=porn_directory_read_only)
     if dir_handler:
         dir_handler.scan()
         return JsonResponse(dir_handler.directory.serialize(), safe=False)
@@ -73,7 +74,7 @@ def get_porn_directory_request(request):
     if dir_handler is None:
         return response
 
-    data = get_porn_directory_info_and_content(porn_directory=dir_handler.storage)
+    data = get_porn_directory_info_and_content(porn_directory=dir_handler.directory)
     return JsonResponse(data, safe=False)
 
 
