@@ -11,3 +11,4 @@ python-Levenshtein
 scandir==1.5
 requests
 redis
+ipython

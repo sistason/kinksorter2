@@ -59,6 +59,9 @@ def recognize_movie(movie, movie_id, new_name='', new_sid=0, api=None):
     if api is None:
         api = APIS.get(movie.api) if movie.api in APIS else APIS.get('Default')
 
+    movie.scene_properties = 0
+    movie.save()
+
     scene_properties = api.recognize(movie, override_name=new_name, override_sid=new_sid)
     if scene_properties is not None and scene_properties != 0:
         movie.scene_properties = scene_properties

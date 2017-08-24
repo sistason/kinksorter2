@@ -1,128 +1,17 @@
-/*
-
-var storage_table_storage_data = {};
-
-var merge_movie = function(row){
-    var movie_id = row.getData().movie_id;
-    $.ajax({
-        url: '/movie/merge',
-        data: {movie_id: movie_id},
-        success: function(data){
-            $("#mainstorage_tabulator").tabulator("addRow", data, true);
-            var movie_id = row.getData().movie_id;
-            row.update({'status': 'in_main', 'movie_id': -1});
-            row.update({'movie_id': movie_id});
-        }
-     });
-};
-
-var merge_multiple_movies = function(rows){
-    var movie_ids = [];
-    for (var key in rows)
-        if (rows.hasOwnProperty(key))
-            movie_ids.push(key);
-
-    $.ajax({
-        url: '/movie/merge_multiple',
-        data: {movie_ids: movie_ids},
-        success: function(data){
-            data.forEach(function(movie_id) {
-                var row = rows[movie_id];
-                $("#mainstorage_tabulator").tabulator("addRow", row.getData(), true);
-                row.update({'status': 'in_main', 'movie_id': -1});
-                row.update({'movie_id': movie_id});
-            });
-        }
-    });
-
-};
-
-var recognize_multiple = function(rows){
-    var movie_ids = [];
-    for (var key in rows)
-        if (rows.hasOwnProperty(key))
-            movie_ids.push(key);
-
-    $.ajax({
-        type: 'GET',
-        url: '/movie/recognize_multiple',
-        data: {movie_ids: movie_ids},
-        success: function(data){
-            data.forEach(function(movie) {
-                var row = rows[movie.movie_id];
-                row.update({'movie_id': -1});
-                row.update(data);
-                //FIXME: Check this works
-            });
-        }
-    });
-};
-
-var merge_good_movies = function(storage_id){
-    var rows = $("#newstorages_"+storage_id+"_tabulator").tabulator("getRows", true);
-
-    var good_rows = {};
-    rows.forEach(function(row){
-        var row_data = row.getData();
-        if (row_data.status == 'okay')
-            good_rows[row.getData().movie_id] = row;
-    });
-
-    merge_multiple_movies(good_rows);
-};
-
-
-
-var reset_storage = function(storage_id) {
-    $.ajax({
-        url: "/storage/reset",
-        data: {storage_id: storage_id},
-        success: function(data) {
-            // clear Storage and update MainStorage, which is cleaned by the backend
-            var $storage = $(".newstorages_" + storage_id + "_tabulator").tabulator('clearData');
-            update_table(0);
-        }
-    });
-};
-
-var recognize_storage = function(storage_id, force) {
-    // Run /rec on all unrecognized movies. Force sets all movies to 0 and recognizes them
-    var $tabulator = $("#newstorages_"+storage_id+"_tabulator");
-    var rows = $tabulator.tabulator("getRows", true);
-
-    if (force){
-        $.ajax({
-            url: "/storage/rerecognize",
-            data: {storage_id: storage_id},
-            success: function(data) {
-                $tabulator.tabulator("clearData");
-                $tabulator.tabulator("setData", data);
-
-                update_tables(0);
-            }
-        });
-    }
-    else {
-        var bad_rows = {};
-        rows.forEach(function(row){
-            var row_data = row.getData();
-            if (row_data.status == 'unrecognized')
-                bad_rows[row.getData().movie_id] = row;
-        });
-
-        recognize_multiple(bad_rows);
-    }
-};
-
-
-*/
+var porn_directory_table_ids = [];
+var tables_built = false;
 
 var show_tooltips = function(cell) {
         return cell.getData().full_path;
     };
-var format_row = function(row){
-    var color = {'unrecognized': '#ffc0c0', 'in_target': '#ffffc0', 'okay': '#c0ffc0'};
-    row.getElement().css({"background-color": color[row.getData().status]});
+var format_row = function(row, porn_directory_id){
+    var color = {'unrecognized': '#ffc0c0', 'duplicate': '#ffffc0', 'okay': '#c0ffc0'};
+
+    var status = row.getData().status;
+    if (porn_directory_id == 0 && status == 'duplicate')
+        status = 'okay';
+
+    row.getElement().css({"background-color": color[status]});
 };
 var format_date = function(cell, params){
     var ts = parseInt(cell.getValue()) || null;
@@ -133,6 +22,8 @@ var format_date = function(cell, params){
     return date.toISOString().slice(0,10);
 };
 var format_options = function(cell, params){
+    var status = cell.getData().status;
+
     var $container = $('<div>', {'class': 'options_container'});
 
     var $del = $('<img>');
@@ -141,14 +32,16 @@ var format_options = function(cell, params){
         $del.click(function(){
             delete_movie(cell.getRow())
         });
-        var $add = $('<img>', {alt: "Add", src: '/static/img/move_to_target.png', 'class': 'img_options'});
-        $add.click(function(){
-            merge_movie(cell.getRow())
-        });
-        if (cell.getData().status == 'okay') {
-            $container.append($add);
-            $container.append('&nbsp;');
+
+        if (status != 'duplicate') {
+            var src = (status == 'okay') ? '/static/img/move_to_target.png' : '/static/img/move_unrecognized_to_target.png';
+            var $add = $('<img>', {alt: "Add", src: src, 'class': 'img_options'});
+            $add.click(function(){
+                move_movie_to_target(cell.getRow())
+            });
+            $container.append($add).append('&nbsp;');
         }
+
     }
     else {
         $del.attr({alt: "Remove", src: '/static/img/remove_from_target.png', 'class': 'img_options'});
@@ -256,7 +149,7 @@ var build_porn_directory_tabulator = function(porn_directory_id){
         fitColumns: true,
 
         cellEdited: modify_movie,
-        rowFormatter: format_row,
+        rowFormatter: function(cell) {format_row(cell, porn_directory_id)},
 
         tooltips: show_tooltips,
 
@@ -285,13 +178,13 @@ var set_porn_directory_header = function(porn_directory_info, porn_directory_id)
             change_porn_directory_name(porn_directory_id, $(this).text())});
 };
 
-
 var build_target_porn_directory_tabulator = function() {
     $("#target_porn_directory_tabulator").tabulator({
         movableColumns: true,
         fitColumns: true,
 
         cellEdited: modify_movie,
+        rowFormatter: function(cell) {format_row(cell, 0)},
 
         tooltips: show_tooltips,
 

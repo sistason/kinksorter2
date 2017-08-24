@@ -1,10 +1,11 @@
+import subprocess
 import logging
 import cv2
-import subprocess
 import os
 import re
 import json
 import tempfile
+from contextlib import contextmanager
 
 
 class KinkRecognitionMethods:
@@ -12,8 +13,8 @@ class KinkRecognitionMethods:
     UNLIKELY_NUMBERS = {'quality': [360, 480, 720, 1080, 1440, 2160],
                         'date': list(range(1970, 2030))}
 
-    def __init__(self, template_dir):
-        self.shootid_templates = self._load_templates(template_dir)
+    def __init__(self, template_directory):
+        self.shootid_templates = self._load_templates(template_directory)
 
         # Filter out dates like 091224 or (20)150101
         self._unlikely_shootid_date_re = re.compile('([01]\d)({})({})'.format(
@@ -21,10 +22,11 @@ class KinkRecognitionMethods:
             '|'.join(['{:02}'.format(i) for i in range(1, 32)])
         ))
 
-    def _load_templates(self, template_dir):
-        if template_dir and os.path.exists(template_dir):
+    @staticmethod
+    def _load_templates(template_directory):
+        if template_directory and os.path.exists(template_directory):
             kink_templates_ = []
-            for template_ in os.scandir(template_dir):
+            for template_ in os.scandir(template_directory):
                 if template_.name.endswith('.jpeg'):
                     kink_templates_.append(template_.path)
 
@@ -101,7 +103,8 @@ class KinkRecognitionMethods:
 
         return shootid
 
-    def _match_template(self, red_frame, template):
+    @staticmethod
+    def _match_template(red_frame, template):
         height, width = red_frame.shape
         # Template is for 720p image, so scale it accordingly
         scale = height / 720.0
@@ -125,25 +128,32 @@ class KinkRecognitionMethods:
         frame_steps = int(fps / 3)
         next_frame = frame_count - 1
         red_frame = None
-        while red_frame is None and next_frame >= analysis_range:
-            red_frame = self._get_next_frame(capture, next_frame)
-            next_frame -= frame_steps
 
-        capture.release()
+        # VideoCapture throws hundreds of stderr-ffmpeg decode errors if the file is corrupt
+        with stderr_redirected():
+            while red_frame is None and next_frame >= analysis_range:
+                red_frame = self._get_next_frame(capture, next_frame)
+                next_frame -= frame_steps
+            capture.release()
+
         if red_frame is None:
             logging.debug('No suitable frames found in the last seconds of file "{}"'.format(file_path))
         return red_frame
 
-    def _prepare_capture(self, capture):
-        # TODO: ignore errors of capture.set of partial files
-        frame_count = capture.get(cv2.CAP_PROP_FRAME_COUNT)
-        fps = capture.get(cv2.CAP_PROP_FPS)
-        # Seek until the end, or adapt the end of the file if not possible
-        capture.set(cv2.CAP_PROP_POS_FRAMES, frame_count)
-        frame_count = capture.get(cv2.CAP_PROP_POS_FRAMES)
+    @staticmethod
+    def _prepare_capture(capture):
+        # VideoCapture throws hundreds of stderr-ffmpeg decode errors if the file is corrupt
+        with stderr_redirected():
+            frame_count = capture.get(cv2.CAP_PROP_FRAME_COUNT)
+            fps = capture.get(cv2.CAP_PROP_FPS)
+            # Seek until the end, or adapt the end of the file if not possible
+            capture.set(cv2.CAP_PROP_POS_FRAMES, frame_count)
+            frame_count = capture.get(cv2.CAP_PROP_POS_FRAMES)
+
         return fps, frame_count
 
-    def _get_next_frame(self, capture, next_frame):
+    @staticmethod
+    def _get_next_frame(capture, next_frame):
         capture.set(cv2.CAP_PROP_POS_FRAMES, next_frame)
         ret, frame_ = capture.read()
         if ret and frame_.any() and (frame_[:, :] > 0).sum() / frame_.size < 0.1:
@@ -168,3 +178,45 @@ class KinkRecognitionMethods:
     def debug_frame(frame):
         cv2.imwrite('/tmp/test.jpeg', frame)
         os.system('eog /tmp/test.jpeg 2>/dev/null')
+
+
+# Thanks to https://stackoverflow.com/questions/4675728/
+def fileno(file_or_fd):
+    fd = getattr(file_or_fd, 'fileno', lambda: file_or_fd)()
+    if not isinstance(fd, int):
+        raise ValueError("Expected a file (`.fileno()`) or a file descriptor")
+    return fd
+
+
+@contextmanager
+def stderr_redirected(to=os.devnull):
+    stderr = sys.stderr
+    stderr_fd = fileno(stderr)
+    # copy stdout_fd before it is overwritten
+    # NOTE: `copied` is inheritable on Windows when duplicating a standard stream
+    with os.fdopen(os.dup(stderr_fd), 'wb') as copied:
+        stderr.flush()  # flush library buffers that dup2 knows nothing about
+        try:
+            os.dup2(fileno(to), stderr_fd)  # $ exec >&to
+        except ValueError:  # filename
+            with open(to, 'wb') as to_file:
+                os.dup2(to_file.fileno(), stderr_fd)  # $ exec > to
+        try:
+            yield stderr  # allow code to be run with the redirected stdout
+        finally:
+            # restore stdout to its previous value
+            # NOTE: dup2 makes stdout_fd inheritable unconditionally
+            stderr.flush()
+            os.dup2(copied.fileno(), stderr_fd)  # $ exec >&copied
+
+
+if __name__ == '__main__':
+    import sys
+    template_dir = os.path.join(os.path.dirname(__file__), 'templates')
+    krm = KinkRecognitionMethods(template_dir)
+
+    file_path = os.path.abspath(sys.argv[1])
+    file_name = os.path.basename(file_path)
+    print('cv: ', krm.get_shootid_through_image_recognition(file_path))
+    print('md: ', krm.get_shootid_through_metadata(file_path))
+    print('nr: ', krm.get_shootids_from_filename(sys.argv[1]))

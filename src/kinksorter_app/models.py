@@ -34,9 +34,12 @@ class Movie(models.Model):
                 if len(scene) > 1:
                     logging.warning('Multiple scenes for shootid {} found! ({})'.format(self.scene_properties, scene))
                 scene = scene[0]
+                if not scene.get('exists'):
+                    status = 'unrecognized'
 
-        if status == 'okay' and self.targetporndirectory_set.exists():
-            status = 'in_target'
+        in_target = self.targetporndirectory_set.exists()
+        if status == 'okay' and in_target:
+            status = 'duplicate'
 
         porn_directory = self.porndirectory_set.get()
         return {
@@ -50,7 +53,8 @@ class Movie(models.Model):
                 'scene_site': '' if DEBUG_SFW else scene.get('site', {}).get('name'),
                 'scene_date': scene.get('date'),
                 'scene_id': scene.get('shootid'),
-                'status': status
+                'status': status,
+                'in_target': in_target
         }
 
     def get_video_path(self):

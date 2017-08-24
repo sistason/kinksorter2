@@ -129,7 +129,7 @@ class MovieScanner:
                 self.add_movie(leaf, tree)
 
         for next_tree in tree.nodes:
-            async(self._scan_tree, next_tree)
+            self._scan_tree(next_tree)
 
     def add_movie(self, leaf, tree):
         api = tree.api if tree.api else self.apis.get('default', None)

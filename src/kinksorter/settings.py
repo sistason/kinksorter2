@@ -44,7 +44,8 @@ INSTALLED_APPS = [
 ]
 
 Q_CLUSTER = {
-    'name': 'kinksorter-cluster'
+    'name': 'kinksorter-cluster',
+    'recycle': 10
 }
 
 

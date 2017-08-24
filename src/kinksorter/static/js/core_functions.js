@@ -1,40 +1,4 @@
-var porn_directory_table_ids = [];
-var tables_built = false;
 
-var modify_movie = function(cell){
-    var field = cell.getField();
-    var row = cell.getRow();
-    var new_scene_name = '', new_scene_id = '';
-
-    if (field == 'title') {
-        new_scene_name = cell.getValue();
-    } else if (field == 'scene_id') {
-        new_scene_id = cell.getValue();
-    }
-
-    if (new_scene_id == '' && new_scene_name == '')
-        return;
-
-    $.ajax({
-            type: 'GET',
-            url: '/movie/recognize',
-            data: {movie_id: row.getData().movie_id,
-                  new_scene_name: new_scene_name,
-                  new_scene_id: new_scene_id
-                 },
-            success: function(data){
-                row.update({'movie_id': -1});
-                row.update(data);
-
-                //FIXME: Check this works
-            },
-            error: function(xhr, status, error) {
-                row.getElement().css('background-color', 'red');
-                //TODO: show status/errors
-               //$(this).find($(".response")).css('background', 'red').text(xhr.responseText);
-            }
-     });
-};
 var add_porn_directory = function(e) {
     var $porn_directory_name = $('.porn_directory_table_0 .input_name');
     var $porn_directory_path = $('.porn_directory_table_0 .input_path');
@@ -67,59 +31,6 @@ var change_porn_directory_name = function(porn_directory_id, name){
                'new_porn_directory_name': name}
     });
 };
-var rescan_porn_directory = function(porn_directory_id) {
-    $.ajax({
-        url: "/porn_directory/update",
-        data: {porn_directory_id: porn_directory_id}
-    });
-};
-/*
-
-
-var delete_movie = function(row) {
-    var movie_id = row.getData().movie_id;
-    $.ajax({
-        url: '/movie/delete',
-        data: {movie_id: movie_id},
-        success: function(data){
-            row.delete();
-            var mainrows = $("#mainstorage_tabulator").tabulator("getRows");
-            for (var i=0; i<mainrows.length; i++){
-                var mainrow = mainrows[i];
-                if (mainrow.getData().movie_id == movie_id) {
-                    mainrow.delete();
-                    break;
-                }
-            }
-        }
-    });
-};
-var remove_movie_from_main = function(row) {
-    $.ajax({
-        url: '/movie/remove_from_main',
-        data: {movie_id: row.getData().movie_id},
-        success: function(data){
-            row.delete();
-
-            // Rebuild options/background for the movie in each newstorage_table
-            newstorage_table_ids.forEach(function(storage_id){
-                var rows = $("#newstorages_" + storage_id + "_tabulator").tabulator('getRows');
-                for (var i=0; i<rows.length; i++){
-                    var current_row = rows[i];
-                    if (current_row.getData().movie_id == row.getData().movie_id){
-                        current_row.update({status: 'okay', movie_id: 1});
-                        current_row.update({movie_id: movie_id});
-
-                        format_row(current_row);
-                        break;
-                    }
-                }
-            });
-
-        }
-    });
-};
-*/
 var delete_porn_directory = function(porn_directory_id){
     $.ajax({
         url: '/porn_directory/delete',
@@ -136,12 +47,200 @@ var delete_porn_directory = function(porn_directory_id){
     });
 };
 
-var watch_video = function(e, cell){
+var delete_movie = function(row) {
+    var movie_id = row.getData().movie_id;
+    $.ajax({
+        url: '/movie/delete',
+        data: {movie_id: movie_id},
+        success: function(data){
+            row.delete();
+            var targetrows = $("#target_porn_directory_tabulator").tabulator("getRows");
+            for (var i=0; i<targetrows.length; i++){
+                var targetrow = targetrows[i];
+                if (targetrow.getData().movie_id == movie_id) {
+                    targetrow.delete();
+                    break;
+                }
+            }
+        }
+    });
+};
+var modify_movie = function(cell){
+    var field = cell.getField();
+    var row = cell.getRow();
+    var new_scene_name = '', new_scene_id = '';
 
+    if (field == 'title') {
+        new_scene_name = cell.getValue();
+    } else if (field == 'scene_id') {
+        new_scene_id = cell.getValue();
+    }
+
+    if (new_scene_id == '' && new_scene_name == '')
+        return;
+
+    $.ajax({
+            type: 'GET',
+            url: '/movie/recognize',
+            data: {
+                movie_id: row.getData().movie_id,
+                new_scene_name: new_scene_name,
+                new_scene_id: new_scene_id
+            },
+            success: function(data){
+                // TODO: differ between row being in dir or target_dir, both need to be updated (if in_target)
+                row.update({'movie_id': -1});
+                row.update(data);
+
+                if (data.in_target) {
+                    var targetrows = $("#target_porn_directory_tabulator").tabulator("getRows");
+                    targetrows.forEach(function (targetrow) {
+                        if (targetrow.getData().movie_id == data.movie_id)
+                            targetrow.update(data);
+                    });
+                }
+            },
+            error: function(xhr, status, error) {
+                row.getElement().css('background-color', 'red');
+                //TODO: show status/errors
+               //$(this).find($(".response")).css('background', 'red').text(xhr.responseText);
+            }
+     });
+};
+var move_movie_to_target = function(row){
+    var movie_id = row.getData().movie_id;
+    $.ajax({
+        url: '/movie/merge',
+        data: {movie_id: movie_id},
+        success: function(data){
+            $("#target_porn_directory_tabulator").tabulator("addRow", data, true);
+            var movie_id = row.getData().movie_id;
+            row.update({'status': 'in_target', 'movie_id': -1});
+            row.update({'movie_id': movie_id});
+        }
+     });
+};
+var remove_movie_from_target = function(row) {
+    $.ajax({
+        url: '/movie/remove_from_target',
+        data: {movie_id: row.getData().movie_id},
+        success: function(data){
+            row.delete();
+
+            // Rebuild options/background for the movie in each newstorage_table
+            porn_directory_table_ids.forEach(function(porn_directory_id){
+                var rows = $("#porn_directory_" + porn_directory_id + "_tabulator").tabulator('getRows');
+                for (var i=0; i<rows.length; i++){
+                    var current_row = rows[i];
+                    if (current_row.getData().movie_id == row.getData().movie_id){
+                        current_row.update({status: 'okay', movie_id: 1});
+                        current_row.update({movie_id: movie_id});
+
+                        format_row(current_row);
+                        break;
+                    }
+                }
+            });
+        }
+    });
 };
 
+var recognize_multiple = function(rows){
+    var movie_ids = [];
+    for (var key in rows)
+        if (rows.hasOwnProperty(key))
+            movie_ids.push(key);
 
+    $.ajax({
+        type: 'GET',
+        url: '/movie/recognize_multiple',
+        data: {movie_ids: movie_ids},
+        success: function(data){
+            data.forEach(function(movie) {
+                var row = rows[movie.movie_id];
+                row.update({'movie_id': -1});
+                row.update(data);
+            });
+        }
+    });
+};
+var merge_good_movies = function(porn_directory_id){
+    var rows = $("#porn_directory_"+porn_directory_id+"_tabulator").tabulator("getRows", true);
 
+    var good_rows = {};
+    rows.forEach(function(row){
+        var row_data = row.getData();
+        if (row_data.status == 'okay')
+            good_rows[row.getData().movie_id] = row;
+    });
+
+    merge_multiple_movies(good_rows);
+};
+var merge_multiple_movies = function(rows){
+    var movie_ids = [];
+    for (var key in rows)
+        if (rows.hasOwnProperty(key))
+            movie_ids.push(key);
+
+    $.ajax({
+        url: '/movie/merge_multiple',
+        data: {movie_ids: movie_ids},
+        success: function(data){
+            data.forEach(function(movie_id) {
+                var row = rows[movie_id];
+                $("#target_porn_directory_tabulator").tabulator("addRow", row.getData(), true);
+                row.update({'status': 'duplicate', 'movie_id': -1, 'in_target': true});
+                row.update({'movie_id': movie_id});
+            });
+        }
+    });
+
+};
+var reset_porn_directory = function(porn_directory_id) {
+    $.ajax({
+        url: "/porn_directory/reset",
+        data: {porn_directory_id: porn_directory_id},
+        success: function(data) {
+            // clear PornDirectory and update TargetPornDirectory, which is cleaned by the backend
+            $("#porn_directory_" + porn_directory_id + "_tabulator").tabulator('clearData');
+            update_table(0);
+        }
+    });
+};
+var rescan_porn_directory = function(porn_directory_id) {
+    $.ajax({
+        url: "/porn_directory/update",
+        data: {porn_directory_id: porn_directory_id}
+    });
+};
+var recognize_porn_directory = function(porn_directory_id, force) {
+    // Run /rec on all unrecognized movies. Force sets all movies to 0 and recognizes them
+    var $tabulator = $("#porn_directory_"+porn_directory_id+"_tabulator");
+    var rows = $tabulator.tabulator("getRows", true);
+
+    if (force){
+        $.ajax({
+            url: "/porn_directory/rerecognize",
+            data: {porn_directory_id: porn_directory_id},
+            success: function(data) {
+                $tabulator.tabulator("clearData");
+                $tabulator.tabulator("setData", data);
+
+                update_tables(0);
+            }
+        });
+    }
+    else {
+        var bad_rows = {};
+        rows.forEach(function(row){
+            var row_data = row.getData();
+            if (row_data.status == 'unrecognized')
+                bad_rows[row.getData().movie_id] = row;
+        });
+
+        recognize_multiple(bad_rows);
+    }
+};
 
 var initial_parse_update_tables_response = function(data, porn_directory_id) {
     if (!tables_built) {
@@ -150,11 +249,10 @@ var initial_parse_update_tables_response = function(data, porn_directory_id) {
     }
     parse_update_tables_response(data, porn_directory_id);
 };
-
 var parse_update_tables_response = function(data, porn_directory_id){
     var $tabulator;
     if (porn_directory_id == 0){
-        $tabulator = $("#reference_porn_directory_tabulator");
+        $tabulator = $("#target_porn_directory_tabulator");
         set_target_porn_directory_header(data);
     }
     else {
@@ -207,10 +305,7 @@ var parse_update_tables_response = function(data, porn_directory_id){
     for (d=0; d<deleted_data.length; d++)
         $tabulator.tabulator("deleteRow", deleted_data[d].id);
 };
-
-
 var update_tables = function(event){
-    // TODO: check if updating breaks editing. Shouldn't.
     var porn_directory_ids = porn_directory_table_ids.concat([0]);
     porn_directory_ids.forEach(function (porn_directory_id) {
         update_table(porn_directory_id);
@@ -238,7 +333,7 @@ $(document).ready(function(){
 
             build_tables();
 
-            //setInterval(update_tables, 20000);
+            setInterval(update_tables, 10000);
         }
     });
 
