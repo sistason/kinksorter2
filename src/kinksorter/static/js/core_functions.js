@@ -102,8 +102,6 @@ var modify_movie = function(cell){
             },
             error: function(xhr, status, error) {
                 row.getElement().css('background-color', 'red');
-                //TODO: show status/errors
-               //$(this).find($(".response")).css('background', 'red').text(xhr.responseText);
             }
      });
 };
