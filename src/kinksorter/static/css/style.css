@@ -13,6 +13,9 @@ body {
     color: red;
     text-align: right;
 }
+img:active {
+    transform: translateY(3px);
+}
 
 #target_porn_directory_container {
     float: left;
@@ -79,8 +82,39 @@ body {
 }
 
 .sorting_container {
+    background-color: #EEEEEE;
+    border-radius: 5px;
+}
+
+.directory_function_box {
+    width: 17%;
+    float: left;
+    font-size: small;
+    /*border: 2px solid red;*/
+    padding-left: 5px;
+    padding-right: 5px;
     text-align: center;
 }
+.directory_function_box .header {
+    text-align: center;
+    font-weight: bold;
+}
+.directory_function_box .function_box {
+    text-align: center;
+}
+.current_task_box {
+    font-size: small;
+}
+
+#sorting_response, #revert_response {
+    background-color: #EEaaaa;
+}
+
+.refresh_box {
+    font-size: small;
+    text-align: center;
+}
+
 
 .column_header_container .porn_directory_name {
     font-weight: bold;

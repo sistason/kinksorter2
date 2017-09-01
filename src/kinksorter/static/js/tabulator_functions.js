@@ -1,19 +1,32 @@
 var porn_directory_table_ids = [];
+var porn_directory_tabulators = [];
 var tables_built = false;
 
-var show_tooltips = function(cell) {
+var get_porn_directory_id = function(cell_row){
+    var tabulator = cell_row.getElement().closest(".tabulator").get();
+    if (!tabulator.length)
+        return -1;
+
+    var $tabulator = tabulator[0];
+    return porn_directory_tabulators.findIndex(function($tab_){
+        return $tab_ == $tabulator;
+    });
+};
+
+var show_tooltips = function(cell){
         return cell.getData().full_path;
-    };
-var format_row = function(row, porn_directory_id){
+};
+var format_row = function(row){
     var color = {'unrecognized': '#ffc0c0', 'duplicate': '#ffffc0', 'okay': '#c0ffc0'};
 
     var status = row.getData().status;
-    if (porn_directory_id == 0 && status == 'duplicate')
+
+    if (get_porn_directory_id(row) == 0 && status == 'duplicate')
         status = 'okay';
 
     row.getElement().css({"background-color": color[status]});
 };
-var format_date = function(cell, params){
+var format_date = function(cell){
     var ts = parseInt(cell.getValue()) || null;
     if (ts == null)
         return;
@@ -21,19 +34,20 @@ var format_date = function(cell, params){
     var date = new Date(ts*1000);
     return date.toISOString().slice(0,10);
 };
-var format_options = function(cell, params){
+var format_options = function(cell){
     var status = cell.getData().status;
+    var porn_directory_id = get_porn_directory_id(cell);
 
     var $container = $('<div>', {'class': 'options_container'});
 
     var $del = $('<img>');
-    if (params.porn_directory_id != 0){
+    if (porn_directory_id != 0){
         $del.attr({alt: "Delete", src: '/static/img/delete.png', 'class': 'img_options delete'});
         $del.click(function(){
             delete_movie(cell.getRow())
         });
 
-        if (status != 'duplicate') {
+        if (status != 'duplicate' && ! cell.getData().in_target) {
             var src = (status == 'okay') ? '/static/img/move_to_target.png' : '/static/img/move_unrecognized_to_target.png';
             var $add = $('<img>', {alt: "Add", src: src, 'class': 'img_options'});
             $add.click(function(){
@@ -60,39 +74,10 @@ var format_options = function(cell, params){
     return $container;
 };
 
-var build_add_porn_directory = function(){
-    var $add_directory = $('<div>', {'class': 'porn_directory_table_0 porn_directory'});
-    var $add_directory_table = $('<table>');
-    var $add_directory_table_tr = $('<tr>');
-    var $add_directory_table_td_submit = $('<td>');
-    var $add_directory_table_td_submit_input = $('<img>', {'class': 'img_functions',
-        'src': '/static/img/add_porn_directory.png', 'alt': 'Add porn directory'}).click(add_porn_directory);
-    var $add_directory_table_td_data = $('<td>');
-    var $add_directory_table_td_data_input_name = $('<input>', {'class': 'input_name', 'name': 'porn_directory_name',
-        'placeholder': 'New porn directory name'}).text('&nbsp;');
-    var $add_directory_table_td_data_input_path = $('<input>', {'class': 'input_path', 'name': 'porn_directory_path',
-        'placeholder': 'New porn directory path'});
-    var $add_directory_table_td_data_input_ro = $('<input>', {'class': 'input_ro', 'name': 'porn_directory_read_only',
-        'id': 'read_only', 'type': 'checkbox', 'value': 'False'});
-    var $add_directory_table_td_data_input_ro_label = $('<input>', {'for': 'read_only'}).text('read_only?');
-
-    // TODO:
-    $add_directory_table_td_data_input_ro.append($add_directory_table_td_data_input_ro_label);
-    $add_directory_table_td_data.append($add_directory_table_td_data_input_name);
-    $add_directory_table_td_data.append($add_directory_table_td_data_input_path);
-    $add_directory_table_td_data.append($add_directory_table_td_data_input_ro);
-    $add_directory_table_td_submit.append($add_directory_table_td_submit_input);
-    $add_directory_table_tr.append($add_directory_table_td_submit);
-    $add_directory_table_tr.append($add_directory_table_td_data);
-    $add_directory_table.append($add_directory_table_tr);
-    $add_directory.append($add_directory_table);
-    $("#porn_directory_tables_container").append($add_directory);
-};
 var build_porn_directory_container = function(porn_directory_id){
     var base_class = "porn_directory_" + porn_directory_id;
     // TODO: jqueryize
     $("#porn_directory_tables_container").append(
-        "<hr />" +
         "<div class='"+base_class+" porn_directory'>" +
             "<table class='column_header_container'>" +
                 "<tr>" +
@@ -139,17 +124,18 @@ var build_porn_directory_container = function(porn_directory_id){
                     "</td>" +
                 "</tr></table>" +
             "<div id='"+base_class+"_tabulator'></div>" +
-        "</div>");
+        "</div>" +
+        "<hr />");
 };
 var build_porn_directory_tabulator = function(porn_directory_id){
-    $("#porn_directory_" + porn_directory_id + "_tabulator").tabulator({
+    var $table = $("#porn_directory_" + porn_directory_id + "_tabulator").tabulator({
         //height:"100%",
 
         movableColumns: true,
         fitColumns: true,
 
         cellEdited: modify_movie,
-        rowFormatter: function(cell) {format_row(cell, porn_directory_id)},
+        rowFormatter: format_row,
 
         tooltips: show_tooltips,
 
@@ -164,6 +150,7 @@ var build_porn_directory_tabulator = function(porn_directory_id){
                 {title: "API", field: "api", minWidth: 80, width: 80}
         ]
     });
+    porn_directory_tabulators.splice(porn_directory_id, 0, $table.get()[0]);
 };
 var set_porn_directory_header = function(porn_directory_info, porn_directory_id){
     var $porn_directory_name = $('<span>', {'class': 'porn_directory_name'})
@@ -172,19 +159,19 @@ var set_porn_directory_header = function(porn_directory_info, porn_directory_id)
     var $porn_directory_params = $('<span>', {'class': 'porn_directory_params'})
         .text("(" + porn_directory_info.porn_directory_movies_count + " titles)" + read_only);
 
-    $(".porn_directory_" + porn_directory_id + " .column_header").html("Storage ")
+    $(".porn_directory_" + porn_directory_id + " .column_header").html("Directory ")
         .append($porn_directory_name).append("<br />").append($porn_directory_params);
     $(".porn_directory_" + porn_directory_id + " .column_header .porn_directory_name").blur(function(){
             change_porn_directory_name(porn_directory_id, $(this).text())});
 };
 
 var build_target_porn_directory_tabulator = function() {
-    $("#target_porn_directory_tabulator").tabulator({
+    var $target = $("#target_porn_directory_tabulator").tabulator({
         movableColumns: true,
         fitColumns: true,
 
         cellEdited: modify_movie,
-        rowFormatter: function(cell) {format_row(cell, 0)},
+        rowFormatter: format_row,
 
         tooltips: show_tooltips,
 
@@ -203,21 +190,16 @@ var build_target_porn_directory_tabulator = function() {
             {title: 'Movie ID', field: "movie_id", visible: false}
         ]
     });
+    porn_directory_tabulators.splice(0, 0, $target.get()[0]);
 };
 var set_target_porn_directory_header = function(options) {};
 
 var build_tables = function() {
     build_target_porn_directory_tabulator();
-    build_porn_directory_tables();
-    tables_built = true;
-};
-
-var build_porn_directory_tables = function() {
-    build_add_porn_directory();
-
     for (var index in porn_directory_table_ids) {
         var porn_directory_id = porn_directory_table_ids[index];
         build_porn_directory_container(porn_directory_id);
         build_porn_directory_tabulator(porn_directory_id);
     }
+    tables_built = true;
 };

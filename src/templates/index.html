@@ -3,14 +3,71 @@
 {% block content %}
 
     <div class="sorting_container">
-        <p>Here be sorting</p>
+
+        <div class="directory_function_box sort_target_box">
+            <div class="header">Sort Target</div>
+            <div class="function_box">
+                <img title="Sort target with move" src="/static/img/sort_move.png"
+                     class="img_functions" id="img_sort_target_move" />
+                <img title="Sort target with link" src="/static/img/sort_link.png"
+                     class="img_functions" id="img_sort_target_link" />
+            </div>
+            Create the target directory by<br />
+            <span style="color: green">moving</span> / <span style="color:orange">linking</span><br />
+            the movies from their directories.
+            <br />
+            <span id="sorting_response">---</span>
+        </div>
+
+        <div class="directory_function_box revert_target_box">
+            <div class="header">Revert Target</div>
+            <div class="function_box">
+                <img title="Revert previously moved/linked target" src="/static/img/revert.png"
+                     class="img_functions" id="img_revert_target" />
+            </div>
+            Revert any previous sort.<br />Move any movies back or<br />delete their links.
+            <br />
+            <span id="revert_response">---</span>
+        </div>
+
+        <div class="directory_function_box add_directory_box">
+            <div class="header">Add Directory</div>
+            <div class="function_box">
+                <img title="Add directory" src="/static/img/add_porn_directory.png"
+                     class="img_functions" id="img_add_directory" />
+            </div>
+
+            <input class="input_name" name="porn_directory_name" placeholder="Porn directory name" /><br />
+            <input class="input_path" name="porn_directory_path" placeholder="Porn directory path" /><br />
+            <input class="input_ro" name="porn_directory_read_only" placeholder="" id="cb_input_ro" type="checkbox"/>
+            <label for="cb_input_ro">read_only?</label>
+
+            <br />
+            <span id="add_directory_response">---</span>
+        </div>
+
+        <div class="stopfloater"></div>
+
+        <br />
+
+        <div class="current_task_box">
+            <strong>Current Task</strong><br />
+            <strong>Action:</strong>&nbsp;<span id="current_task_action"></span>&nbsp;<strong>|</strong>&nbsp;
+            <span id="current_task_status"></span>
+        </div>
+
     </div>
 
+    <div class="refresh_box">
+        <img title="Refresh every 10sec?" src="/static/img/refresh_on.png" class='img_functions' id="cb_refresh" />
+        <br />
+        <span style="font-size: small">Periodically refresh?</span>
+    </div>
     <br />
 
     <div class="tabulators">
         <div id="target_porn_directory_container">
-            <p class="column_header">Main Directory</p>
+            <p class="column_header">Target Directory</p>
             <div id="target_porn_directory_tabulator"></div>
         </div>
 

@@ -1,8 +1,9 @@
+var update_tables_timer_id;
 
 var add_porn_directory = function(e) {
-    var $porn_directory_name = $('.porn_directory_table_0 .input_name');
-    var $porn_directory_path = $('.porn_directory_table_0 .input_path');
-    var $porn_directory_read_only = $('.porn_directory_table_0 .input_ro');
+    var $porn_directory_name = $('.add_directory_box .input_name');
+    var $porn_directory_path = $('.add_directory_box .input_path');
+    var $porn_directory_read_only = $('.add_directory_box .input_ro');
 
     $.ajax({
         url: "/porn_directory/add",
@@ -112,9 +113,8 @@ var move_movie_to_target = function(row){
         data: {movie_id: movie_id},
         success: function(data){
             $("#target_porn_directory_tabulator").tabulator("addRow", data, true);
-            var movie_id = row.getData().movie_id;
-            row.update({'status': 'in_target', 'movie_id': -1});
-            row.update({'movie_id': movie_id});
+            row.update({'movie_id': -1, 'status': ''});
+            row.update(data);
         }
      });
 };
@@ -125,7 +125,7 @@ var remove_movie_from_target = function(row) {
         success: function(data){
             row.delete();
 
-            // Rebuild options/background for the movie in each newstorage_table
+            // Rebuild options/background for the movie in each tabulator
             porn_directory_table_ids.forEach(function(porn_directory_id){
                 var rows = $("#porn_directory_" + porn_directory_id + "_tabulator").tabulator('getRows');
                 for (var i=0; i<rows.length; i++){
@@ -186,8 +186,8 @@ var merge_multiple_movies = function(rows){
         success: function(data){
             data.forEach(function(movie_id) {
                 var row = rows[movie_id];
-                $("#target_porn_directory_tabulator").tabulator("addRow", row.getData(), true);
                 row.update({'status': 'duplicate', 'movie_id': -1, 'in_target': true});
+                $("#target_porn_directory_tabulator").tabulator("addRow", row.getData(), true);
                 row.update({'movie_id': movie_id});
             });
         }
@@ -303,7 +303,7 @@ var parse_update_tables_response = function(data, porn_directory_id){
     for (d=0; d<deleted_data.length; d++)
         $tabulator.tabulator("deleteRow", deleted_data[d].id);
 };
-var update_tables = function(event){
+var update_tables = function(){
     var porn_directory_ids = porn_directory_table_ids.concat([0]);
     porn_directory_ids.forEach(function (porn_directory_id) {
         update_table(porn_directory_id);
@@ -319,6 +319,17 @@ var update_table = function(porn_directory_id){
         }
     });
 };
+var update_current_task = function(){
+    $.ajax({
+        url: '/get_current_task',
+        success: function(data){
+            console.log(data);
+            $('#current_task_action').text(data.action);
+            $('#current_task_status').text(data.status);
+        }
+    });
+
+};
 
 $(document).ready(function(){
     $.ajax({
@@ -329,9 +340,11 @@ $(document).ready(function(){
             // start update, so the ajax can run while building the storages
             update_tables();
 
+            build_sorting();
             build_tables();
 
-            setInterval(update_tables, 10000);
+            setInterval(update_current_task, 1000);
+            update_tables_timer_id = setInterval(update_tables, 10000);
         }
     });
 
@@ -341,7 +354,7 @@ $(document).ready(function(){
        e.preventDefault();
 
        dragging = true;
-       var main = $('#newstorages_container');
+       var main = $('#porn_directory_tables_container');
        var ghostbar = $('<div>',
                         {id:'ghostbar',
                          css: {
@@ -360,7 +373,7 @@ $(document).ready(function(){
            var percentage = (e.pageX / window.innerWidth) * 100;
            var mainPercentage = 100-percentage;
 
-           $('#reference_porn_directory_table_container').css("width",(percentage-2) + "%");
+           $('#target_porn_directory_container').css("width",(percentage-2) + "%");
            $('#porn_directory_tables_container').css("width",(mainPercentage-2) + "%");
            $('#ghostbar').remove();
            $(document).unbind('mousemove');
@@ -370,7 +383,7 @@ $(document).ready(function(){
            porn_directory_table_ids.forEach(function(i){
                $("#porn_directory_"+i+"_tabulator").tabulator("redraw");
            });
-           $("#reference_porn_directory_tabulator").tabulator("redraw");
+           $("#target_porn_directory_tabulator").tabulator("redraw");
        }
     });
 

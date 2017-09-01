@@ -1,11 +1,13 @@
 from django.conf.urls import url
 
-from kinksorter_app.functionality import io_handling_directory, io_handling_movie
+from kinksorter_app.functionality import io_handling_directory, io_handling_movie, sorting
 from kinksorter_app import views
 
 urlpatterns = [
     url(r'^$', views.index),
     url(r'^play_video/(?P<movie_id>\d+)/?$', views.play_video),
+    url(r'^sort/?$', sorting.sort_into_target),
+    url(r'^get_current_task/?$', sorting.get_current_task),
 ]
 
 urlpatterns += [

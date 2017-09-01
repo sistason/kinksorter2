@@ -3,6 +3,7 @@ import logging
 import cv2
 import os
 import re
+import sys
 import json
 import tempfile
 from contextlib import contextmanager
@@ -211,7 +212,6 @@ def stderr_redirected(to=os.devnull):
 
 
 if __name__ == '__main__':
-    import sys
     template_dir = os.path.join(os.path.dirname(__file__), 'templates')
     krm = KinkRecognitionMethods(template_dir)
 
