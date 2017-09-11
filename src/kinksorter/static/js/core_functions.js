@@ -37,6 +37,10 @@ var delete_porn_directory = function(porn_directory_id){
         url: '/porn_directory/delete',
         data: {porn_directory_id: porn_directory_id},
         success: function(){
+            var index = porn_directory_table_ids.findIndex(function(id){return id==porn_directory_id});
+            porn_directory_table_ids.splice(index, 1);
+            porn_directory_tabulators.splice(index, 1);
+
             $("#porn_directory_" + porn_directory_id + "_tabulator").tabulator('clearData');
             $("div.porn_directory_" + porn_directory_id).empty();
 
@@ -323,9 +327,23 @@ var update_current_task = function(){
     $.ajax({
         url: '/get_current_task',
         success: function(data){
-            console.log(data);
-            $('#current_task_action').text(data.action);
-            $('#current_task_status').text(data.status);
+            var queue = data.queue;
+            var tasks = data.tasks;
+
+            var $tasks = $('#current_tasks').empty();
+            $tasks.append('_' + queue + '_ | ');
+
+            for (var i=0; i<tasks.length; i++) {
+                if (i != 0)
+                    $tasks.append(' + ');
+
+                $tasks.append($('<span class="current_task_action">').text(tasks[i].action));
+                if (tasks[i].running_for) {
+                    $tasks.append('&nbsp;');
+                    var status = 'running for '+tasks[i].running_for+' seconds';
+                    $tasks.append($('<span>').text(status));
+                }
+            }
         }
     });
 

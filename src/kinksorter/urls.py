@@ -7,7 +7,7 @@ urlpatterns = [
     url(r'^$', views.index),
     url(r'^play_video/(?P<movie_id>\d+)/?$', views.play_video),
     url(r'^sort/?$', sorting.sort_into_target),
-    url(r'^get_current_task/?$', sorting.get_current_task),
+    url(r'^get_current_task/?$', sorting.get_current_task_request),
 ]
 
 urlpatterns += [

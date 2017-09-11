@@ -11,6 +11,7 @@ from kinksorter.settings import DIRECTORY_LINKS
 from kinksorter_app.models import PornDirectory, Movie, FileProperties, TargetPornDirectory
 from kinksorter_app.apis.api_router import get_correct_api, APIS
 from kinksorter_app.functionality.movie_handling import recognize_movie, recognize_multiple
+from kinksorter_app.functionality.status import hook_set_task_ended
 
 
 class PornDirectoryHandler:
@@ -35,7 +36,8 @@ class PornDirectoryHandler:
         else:
             self.directory = get_porn_directory(porn_directory)
 
-        self.scanner = MovieScanner(self.directory, APIS)
+        if self.directory is not None:
+            self.scanner = MovieScanner(self.directory, APIS)
 
     def link_porn_directory(self):
         link_path = os.path.join(DIRECTORY_LINKS, str(self.directory.id))
@@ -80,6 +82,7 @@ class PornDirectoryHandler:
         if self.directory is not None:
             for movie in self.directory.movies.all():
                 movie.delete()
+
             self.directory.delete()
 
             link_path = os.path.join(DIRECTORY_LINKS, str(self.directory.id))
@@ -100,7 +103,7 @@ class MovieScanner:
 
     def scan(self):
         self._get_listing(self.directory_tree, recursion_depth=5)
-        return async(self._scan_tree, self.directory_tree)
+        return async(self._scan_tree, self.directory_tree, hook=hook_set_task_ended)
 
     def _get_listing(self, tree, recursion_depth=0):
         recursion_depth -= 1
@@ -126,7 +129,11 @@ class MovieScanner:
             logging.debug('Scanning file {}...'.format(leaf.full_path[-100:]))
             if leaf.is_writeable() and leaf.is_video_file():
                 logging.debug('  Adding movie {}...'.format(leaf.full_path[-100:]))
-                self.add_movie(leaf, tree)
+                try:
+                    self.add_movie(leaf, tree)
+                except ObjectDoesNotExist:
+                    # Directory does not exist anymore. Was deleted, so abort Task
+                    return
 
         for next_tree in tree.nodes:
             self._scan_tree(next_tree)
@@ -137,7 +144,13 @@ class MovieScanner:
             logging.debug('    No API.')
             return
 
-        if Movie.objects.filter(file_properties__full_path=leaf.full_path).exists():
+        if not PornDirectory.objects.filter(id=self.porn_directory.id).exists():
+            # Remove race condition movies
+            for movie in self.porn_directory.movies.all():
+                movie.delete()
+            raise ObjectDoesNotExist
+
+        if self.porn_directory.movies.filter(file_properties__full_path=leaf.full_path).exists():
             logging.debug('    Duplicate movie.')
             return
 
@@ -241,7 +254,11 @@ def get_porn_directory_info_and_content(porn_directory=None, porn_directory_id='
 
 
 def get_movies_of_porn_directory(porn_directory):
-    return [movie.serialize() for movie in porn_directory.movies.all()]
+    try:
+        return [movie.serialize() for movie in porn_directory.movies.all()]
+    except ObjectDoesNotExist:
+        # Thank you Race Conditions...
+        return []
 
 
 def get_porn_directory_ids():

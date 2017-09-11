@@ -1,36 +1,58 @@
 from django.dispatch import receiver
-from django_q.signals import pre_enqueue, pre_execute
+from django_q.signals import pre_execute
+from django_q.models import Task
 from django_q.monitor import Stat
+from django.db.models import ObjectDoesNotExist
 
 
-class CurrentTask:
-    def __init__(self, cluster):
-        self.action = None
-        self.status = None
-        self.cluster = cluster
+import datetime
+from kinksorter_app.models import CurrentTask
 
-    def set(self, func, status, queue):
-        self.action = func
-        self.status = status
 
-    def __bool__(self):
-        return self.action is not None
+def get_current_task():
+    clusters = Stat.get_all()
+    current_tasks = CurrentTask.objects.all()
 
-    def to_dict(self):
-        action = self.action if self.action else 'Idle'
-        status = self.status if self.status else '-'
-        queue = '{}/{}'.format(self.cluster.done_q_size, self.cluster.task_q_size + self.cluster.done_q_size)
-        return {'action': action, 'status': status + queue}
+    if clusters and clusters[0].status != 'Stopped':
+        cluster = clusters[0]
+    else:
+        cluster = None
+        [c.delete() for c in current_tasks]
 
-stat = Stat.get_all()[0]
-CURRENT_TASK = CurrentTask(stat)
+    now = datetime.datetime.now(tz=datetime.timezone.utc)
+    tasks = []
+    for task in current_tasks:
+        running_for = (now - task.started).seconds
+        print(task.func, ':', running_for, 'seconds')
+        if task.ended or running_for > 300:    #TODO
+            task.delete()
+        else:
+            tasks.append({'action': task.func, 'running_for': running_for})
+
+    if not tasks or not cluster:
+        return {'queue': '0/0', 'tasks': [{'action': 'Idle', 'status': '-'}]}
+
+    queue = '{}/{}'.format(cluster.done_q_size, cluster.task_q_size + cluster.done_q_size)
+
+    return {'queue': queue, 'tasks': tasks}
+
+
+CURRENT_TASK = CurrentTask()
 
 
 @receiver(pre_execute)
 def my_pre_execute_callback(sender, func, task, **kwargs):
-    print("Task {} will be executed by calling {}".format(
-          task["name"], func))
     print(task)
-    print(func)
-    print(type(sender))
-    CURRENT_TASK.set(task['name'], func, None)
+    task = CurrentTask(name=task['name'], task_id=task['id'],
+                       func=task['func'].__qualname__, started=task['started'],
+                       cluster_id=0)
+    task.save()
+
+
+def hook_set_task_ended(task):
+    try:
+        current_task = CurrentTask.objects.get(task_id=task.id)
+        current_task.ended = True
+        current_task.save()
+    except ObjectDoesNotExist:
+        pass

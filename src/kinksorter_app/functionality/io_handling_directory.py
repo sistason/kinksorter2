@@ -15,7 +15,7 @@ def add_new_porn_directory_request(request):
                                        name=porn_directory_name, read_only=porn_directory_read_only)
     if dir_handler:
         dir_handler.scan()
-        return JsonResponse(dir_handler.directory.serialize(), safe=False)
+        return JsonResponse(get_porn_directory_info_and_content(porn_directory=dir_handler.directory), safe=False)
     return HttpResponse('Directory already exists', status=406)
 
 

@@ -2,7 +2,10 @@ import logging
 import os
 
 from django.http import HttpResponse, JsonResponse
-from kinksorter_app.functionality.status import CURRENT_TASK
+from kinksorter_app.functionality.status import get_current_task
+#from kinksorter.settings import CURRENT_TASK
+
+CURRENT_TASK = {}
 
 
 def sort_into_target(request):
@@ -13,7 +16,7 @@ def sort_into_target(request):
 
     if CURRENT_TASK:
         return HttpResponse('Task running! Wait for completion before sorting.', status=503)
-    CURRENT_TASK.set('Sorting by {}'.format('Move' if move_ else 'Link'), None, None)
+    t_ = ('Sorting by {}'.format('Move' if move_ else 'Link'), None, None)
 
     return HttpResponse('nope', status=500)
 
@@ -38,6 +41,8 @@ def sort_into_target(request):
     """
 
 
-def get_current_task(request):
-    return JsonResponse(CURRENT_TASK.to_dict())
+def get_current_task_request(request):
+    global CURRENT_TASK
+    CURRENT_TASK = get_current_task()
+    return JsonResponse(CURRENT_TASK, safe=False)
 

@@ -3,18 +3,18 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from django_q.tasks import async, Iter, result, fetch
 from kinksorter_app.apis.api_router import APIS
-
 from kinksorter_app.models import Movie, FileProperties, PornDirectory
+from kinksorter_app.functionality.status import hook_set_task_ended
 
 
 def recognize_multiple(movie_ids, movies=None, wait_for_finish=True):
     tasks_ = []
     if movie_ids:
         for movie_id in movie_ids:
-            tasks_.append(async(recognize_movie, None, movie_id))
+            tasks_.append(async(recognize_movie, None, movie_id, hook=hook_set_task_ended))
     elif movies is not None:
         for movie in movies:
-            tasks_.append(async(recognize_movie, movie, None))
+            tasks_.append(async(recognize_movie, movie, None, hook=hook_set_task_ended))
 
     if not wait_for_finish:
         return

@@ -102,8 +102,11 @@ img:active {
 .directory_function_box .function_box {
     text-align: center;
 }
-.current_task_box {
+.current_tasks_box {
     font-size: small;
+}
+.current_tasks_box .current_task_action {
+    font-weight: bold;
 }
 
 #sorting_response, #revert_response {

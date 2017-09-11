@@ -1,4 +1,5 @@
 from django.db import models
+import django.utils.timezone
 import datetime
 from os import path
 import logging
@@ -95,3 +96,12 @@ class PornDirectory(models.Model):
             'porn_directory_movies_count': self.movies.count(),
             'is_target': False
         }
+
+
+class CurrentTask(models.Model):
+    cluster_id = models.SmallIntegerField()
+    func = models.CharField(max_length=100, default='')
+    started = models.DateTimeField(default=django.utils.timezone.now)
+    name = models.CharField(max_length=100)
+    task_id = models.CharField(max_length=50)
+    ended = models.BooleanField(default=False)

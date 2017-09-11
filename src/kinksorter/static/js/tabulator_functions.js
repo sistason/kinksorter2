@@ -124,8 +124,9 @@ var build_porn_directory_container = function(porn_directory_id){
                     "</td>" +
                 "</tr></table>" +
             "<div id='"+base_class+"_tabulator'></div>" +
-        "</div>" +
-        "<hr />");
+        "<hr />" +
+        "</div>"
+        );
 };
 var build_porn_directory_tabulator = function(porn_directory_id){
     var $table = $("#porn_directory_" + porn_directory_id + "_tabulator").tabulator({
