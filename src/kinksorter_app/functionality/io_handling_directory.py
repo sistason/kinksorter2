@@ -2,12 +2,16 @@ from django.http.response import HttpResponse, JsonResponse
 
 from kinksorter_app.functionality.directory_handling import PornDirectoryHandler, \
     get_porn_directory_ids, get_porn_directory_info_and_content
+from kinksorter_app.models import CurrentTask
 
 
 def add_new_porn_directory_request(request):
     porn_directory_path = request.GET.get('porn_directory_path')
     if not porn_directory_path:
         return HttpResponse('No porn_directory_path in request', status=400)
+
+    if CurrentTask.objects.filter(name__ne='Scanning').exists():
+        return HttpResponse('Task running! Wait for completion!.', status=503)
 
     porn_directory_name = request.GET.get('porn_directory_name')
     porn_directory_read_only = True if request.GET.get('porn_directory_read_only') else False
@@ -20,6 +24,9 @@ def add_new_porn_directory_request(request):
 
 
 def update_porn_directory_request(request):
+    if CurrentTask.objects.filter(name__ne='Scanning').exists():
+        return HttpResponse('Task running! Wait for completion!.', status=503)
+
     dir_handler, response = get_porn_directory_handler_by_id(request)
     if dir_handler is None:
         return response
@@ -29,6 +36,9 @@ def update_porn_directory_request(request):
 
 
 def reset_porn_directory_request(request):
+    if CurrentTask.objects.filter(name__ne='Scanning').exists():
+        return HttpResponse('Task running! Wait for completion!.', status=503)
+
     dir_handler, response = get_porn_directory_handler_by_id(request)
     if dir_handler is None:
         return response

@@ -100,7 +100,9 @@ class PornDirectory(models.Model):
 
 class CurrentTask(models.Model):
     name = models.CharField(max_length=200)
-    task_id = models.CharField(max_length=50, null=True)
     started = models.DateTimeField(default=django.utils.timezone.now)
     ended = models.BooleanField(default=False)
-    subtasks = models.IntegerField(default=0)
+    progress_max = models.IntegerField(default=0)
+    progress_current = models.IntegerField(default=0)
+
+

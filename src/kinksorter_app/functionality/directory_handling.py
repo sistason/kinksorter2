@@ -5,13 +5,11 @@ import os
 
 from django_q.tasks import async
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
-from django.core.serializers import serialize
 
 from kinksorter.settings import DIRECTORY_LINKS
-from kinksorter_app.models import PornDirectory, Movie, FileProperties, TargetPornDirectory
+from kinksorter_app.models import PornDirectory, Movie, FileProperties, TargetPornDirectory, CurrentTask
 from kinksorter_app.apis.api_router import get_correct_api, APIS
 from kinksorter_app.functionality.movie_handling import recognize_movie, recognize_multiple
-from kinksorter_app.functionality.status import hook_set_task_ended
 
 
 class PornDirectoryHandler:
@@ -100,10 +98,12 @@ class MovieScanner:
         self.apis = apis
         self.porn_directory = porn_directory
         self.directory_tree = DirectoryTree(porn_directory.path)
+        self._num_trees = 0
 
     def scan(self):
         self._get_listing(self.directory_tree, recursion_depth=5)
-        return async(self._scan_tree, self.directory_tree, hook=hook_set_task_ended)
+        CurrentTask(name='Scanning', progress_max=self._num_trees).save()
+        return async(self._scan_tree, self.directory_tree)
 
     def _get_listing(self, tree, recursion_depth=0):
         recursion_depth -= 1
@@ -119,6 +119,7 @@ class MovieScanner:
 
                 if entry.is_file() or entry.is_symlink():
                     tree.leafs.append(Leaf(entry.path))
+                    self._num_trees += 1
             except OSError:
                 pass
 
@@ -129,10 +130,15 @@ class MovieScanner:
             logging.debug('Scanning file {}...'.format(leaf.full_path[-100:]))
             if leaf.is_writeable() and leaf.is_video_file():
                 logging.debug('  Adding movie {}...'.format(leaf.full_path[-100:]))
+                current_task = CurrentTask.objects.get(name='Scanning')
                 try:
                     self.add_movie(leaf, tree)
+                    current_task.progress_current += 1
+                    current_task.save()
                 except ObjectDoesNotExist:
                     # Directory does not exist anymore. Was deleted, so abort Task
+                    current_task.progress_current = current_task.progress_max
+                    current_task.save()
                     return
 
         for next_tree in tree.nodes:

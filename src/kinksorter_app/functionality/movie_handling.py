@@ -12,34 +12,18 @@ logger = logging.getLogger(__name__)
 def recognize_multiple(movie_ids, movies=None, wait_for_finish=True):
     tasks_ = []
 
-    if not CurrentTask.objects.filter(subtasks__gt=0).exist():
-        subtasks_ = len(movie_ids) if movie_ids else len(movies) if movies is not None else 0
-        parent_task = CurrentTask(name='Recognizing multiple', task_id=0, subtasks=subtasks_)
-        parent_task.save()
-    else:
-        parent_task = CurrentTask.objects.filter(subtasks__gt=0).get()
+    subtasks_ = len(movie_ids) if movie_ids else len(movies) if movies is not None else 0
+    current_task, _ = CurrentTask.objects.get_or_create(name='Recognizing')
+    current_task.progress_max += subtasks_
+    current_task.save()
 
     if movie_ids:
-        parent_task.subtasks += len(movie_ids)
-        parent_task.save()
-
         for movie_id in movie_ids:
-            task_id = async(recognize_movie, None, movie_id, hook=hook_set_task_ended)
-
-            task_ = CurrentTask(name='recognize_movie: {}'.format(movie_id), task_id=task_id)
-            task_.save()
-
+            task_id = async(recognize_movie, None, movie_id, hook=lambda f: hook_set_task_ended(f, name='Recognizing'))
             tasks_.append(task_id)
     elif movies is not None:
-        parent_task.subtasks += len(movies)
-        parent_task.save()
-
         for movie in movies:
-            task_id = async(recognize_movie, movie, None, hook=hook_set_task_ended)
-
-            task_ = CurrentTask(name='recognize_movie: {}'.format(movie.id), task_id=task_id)
-            task_.save()
-
+            task_id = async(recognize_movie, movie, None, hook=lambda f: hook_set_task_ended(f, name='Recognizing'))
             tasks_.append(task_id)
 
     if not wait_for_finish:

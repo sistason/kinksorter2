@@ -30,8 +30,7 @@ def recognize_multiple_movies_request(request):
     if [m for m in movie_ids if not m.isdigit()]:
         return HttpResponse('MovieIDs has to be a list of integers', status=400)
 
-    if CurrentTask.objects.filter(subtasks=0).exist() and not \
-            CurrentTask.objects.get(subtasks=0).name == 'Recognizing multiple':
+    if CurrentTask.objects.filter(name__ne='Recognizing').exists():
         return HttpResponse('Task running! Wait for completion!.', status=503)
 
     recognized = recognize_multiple(movie_ids, None)

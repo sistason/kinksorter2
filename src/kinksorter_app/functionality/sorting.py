@@ -21,13 +21,13 @@ def sort_into_target(request):
     if not action_ or action_ not in ['move', 'link', 'cmd']:
         return HttpResponse('action needs to be a valid value', status=400)
 
-    if CurrentTask.objects.exist():
+    if CurrentTask.objects.exists():
         return HttpResponse('Task running! Wait for completion before sorting.', status=503)
 
     sorter = TargetSorter(action_)
     async(sorter.sort)
 
-    task_ = CurrentTask(name='Sorting', task_id=0, subtasks=TargetPornDirectory.objects.get().movies.count())
+    task_ = CurrentTask(name='Sorting', progress_max=TargetPornDirectory.objects.get().movies.count())
     task_.save()
 
     return HttpResponse('sorting started', status=200)
@@ -40,19 +40,17 @@ class TargetSorter:
         self.shopping_list = []
 
     def sort(self):
-        logging.basicConfig(format='%(message)s', level=logging.INFO)
+        logging.basicConfig(format='%(message)s', level=logging.DEBUG)
         logging.info('Sorting...')
 
+        current_task = CurrentTask.objects.get(name='Sorting')
         for movie in TargetPornDirectory.objects.get().movies.all():
             logging.debug('Sorting movie {}...'.format(movie.file_properties.file_name))
 
-            task_ = CurrentTask(name='Sorting movie {}'.format(movie.file_properties.file_name), task_id=0)
-            task_.save()
-
             self._sort_movie(movie)
 
-            task_.ended = True
-            task_.save()
+            current_task.progress_current += 1
+            current_task.save()
 
         if self.action == 'list':
             return self._get_shopping_list()

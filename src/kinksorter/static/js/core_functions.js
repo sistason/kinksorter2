@@ -327,22 +327,25 @@ var update_current_task = function(){
     $.ajax({
         url: '/get_current_task',
         success: function(data){
-            var queue = data.queue;
-            var tasks = data.tasks;
 
             var $tasks = $('#current_tasks').empty();
-            $tasks.append('_' + queue + '_ | ');
+            if (!data.length) {
+                $tasks.append($('<span class="current_task_action">').text('Idle'));
+                return;
+            }
 
-            for (var i=0; i<tasks.length; i++) {
+            for (var i=0; i<data.length; i++) {
                 if (i != 0)
                     $tasks.append(' + ');
 
-                $tasks.append($('<span class="current_task_action">').text(tasks[i].action));
-                if (tasks[i].running_for) {
-                    $tasks.append('&nbsp;');
-                    var status = 'running for '+tasks[i].running_for+' seconds';
-                    $tasks.append($('<span>').text(status));
-                }
+                $tasks.append($('<span class="current_task_action">').text(data[i].action));
+                $tasks.append('&nbsp;');
+
+                var running = 'running for '+data[i].running_for+' seconds';
+                $tasks.append($('<span>').text(running));
+
+                $tasks.append('&nbsp;');
+                $tasks.append('(' + data[i].progress + ')');
             }
         }
     });
