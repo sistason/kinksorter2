@@ -5,10 +5,24 @@ from kinksorter_app.apis.api_router import APIS
 from kinksorter_app.models import Movie, FileProperties, PornDirectory, CurrentTask
 from kinksorter_app.functionality.status import hook_set_task_ended
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 def recognize_multiple(movie_ids, movies=None, wait_for_finish=True):
     tasks_ = []
+
+    if not CurrentTask.objects.filter(subtasks__gt=0).exist():
+        subtasks_ = len(movie_ids) if movie_ids else len(movies) if movies is not None else 0
+        parent_task = CurrentTask(name='Recognizing multiple', task_id=0, subtasks=subtasks_)
+        parent_task.save()
+    else:
+        parent_task = CurrentTask.objects.filter(subtasks__gt=0).get()
+
     if movie_ids:
+        parent_task.subtasks += len(movie_ids)
+        parent_task.save()
+
         for movie_id in movie_ids:
             task_id = async(recognize_movie, None, movie_id, hook=hook_set_task_ended)
 
@@ -17,6 +31,9 @@ def recognize_multiple(movie_ids, movies=None, wait_for_finish=True):
 
             tasks_.append(task_id)
     elif movies is not None:
+        parent_task.subtasks += len(movies)
+        parent_task.save()
+
         for movie in movies:
             task_id = async(recognize_movie, movie, None, hook=hook_set_task_ended)
 
@@ -52,7 +69,7 @@ def recognize_movie(movie, movie_id, new_name='', new_sid=0, api=None):
             pass
 
     if movie is None:
-        print('No movie for recognition passed!')
+        logger.error('No movie for recognition passed!')
         return
 
     if api is None:

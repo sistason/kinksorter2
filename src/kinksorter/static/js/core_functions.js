@@ -315,7 +315,7 @@ var update_tables = function(){
 };
 var update_table = function(porn_directory_id){
     $.ajax({
-        url: "/porn_directory/get_porn_directory",
+        url: "/porn_directory/get",
         data: {"porn_directory_id": porn_directory_id},
         dataType: 'json',
         success: function(data, textStats, jqXHR){
@@ -351,7 +351,7 @@ var update_current_task = function(){
 
 $(document).ready(function(){
     $.ajax({
-        url: '/porn_directory/get_porn_directory_ids',
+        url: '/porn_directory/get_ids',
         success: function (data) {
             porn_directory_table_ids = data;
 

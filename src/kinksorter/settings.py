@@ -126,6 +126,37 @@ USE_L10N = True
 USE_TZ = True
 
 
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': '[%(asctime)s] %(message)s',
+            'datefmt': '%H:%M:%S',
+        }
+    },
+    'filters': {
+        'ignore_get_current_task': {
+            '()': 'django.utils.log.CallbackFilter',
+            'callback': lambda r: not (len(r.args) > 2 and r.args[1] == '200' and r.args[0] == 'GET /get_current_task HTTP/1.1'),
+        }
+    },
+    'handlers': {
+        'console': {
+            'filters': ['ignore_get_current_task'],
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+        },
+    },
+}
+
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.10/howto/static-files/
 

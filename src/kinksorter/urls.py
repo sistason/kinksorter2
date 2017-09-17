@@ -17,8 +17,8 @@ urlpatterns += [
     url(r'^porn_directory/reset/?$', io_handling_directory.reset_porn_directory_request),
     url(r'^porn_directory/rerecognize/?$', io_handling_directory.rerecognize_porn_directory_request),
     url(r'^porn_directory/change_name/?$', io_handling_directory.change_porn_directory_name_request),
-    url(r'^porn_directory/get_porn_directory/?$', io_handling_directory.get_porn_directory_request),
-    url(r'^porn_directory/get_porn_directory_ids/?$', io_handling_directory.get_porn_directory_ids_request),
+    url(r'^porn_directory/get/?$', io_handling_directory.get_porn_directory_request),
+    url(r'^porn_directory/get_ids/?$', io_handling_directory.get_porn_directory_ids_request),
 ]
 
 urlpatterns += [

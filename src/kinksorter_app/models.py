@@ -103,3 +103,4 @@ class CurrentTask(models.Model):
     task_id = models.CharField(max_length=50, null=True)
     started = models.DateTimeField(default=django.utils.timezone.now)
     ended = models.BooleanField(default=False)
+    subtasks = models.IntegerField(default=0)

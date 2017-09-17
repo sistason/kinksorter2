@@ -3,6 +3,7 @@ from django.http import HttpResponse, JsonResponse
 from kinksorter_app.functionality.movie_handling import get_movie, recognize_movie, recognize_multiple, delete_movie, \
     remove_movie_from_target, merge_movie
 from kinksorter_app.functionality.directory_handling import get_target_porn_directory
+from kinksorter_app.models import CurrentTask
 
 
 def recognize_movie_request(request):
@@ -28,6 +29,10 @@ def recognize_multiple_movies_request(request):
     movie_ids = request.GET.getlist('movie_ids[]')
     if [m for m in movie_ids if not m.isdigit()]:
         return HttpResponse('MovieIDs has to be a list of integers', status=400)
+
+    if CurrentTask.objects.filter(subtasks=0).exist() and not \
+            CurrentTask.objects.get(subtasks=0).name == 'Recognizing multiple':
+        return HttpResponse('Task running! Wait for completion!.', status=503)
 
     recognized = recognize_multiple(movie_ids, None)
     return JsonResponse(recognized, safe=False)
