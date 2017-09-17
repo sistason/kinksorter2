@@ -2,10 +2,12 @@ var porn_directory_table_ids = [];
 var porn_directory_tabulators = [];
 var tables_built = false;
 
-var get_porn_directory_id = function(cell_row){
-    var tabulator = cell_row.getElement().closest(".tabulator").get();
-    if (!tabulator.length)
+var get_porn_directory_id = function(row){
+    var tabulator = row.getElement().closest(".tabulator").get();
+    if (!tabulator.length) {
+        console.log('Could not find directory-id! row.value: '+row.getValue());
         return -1;
+    }
 
     var $tabulator = tabulator[0];
     return porn_directory_tabulators.findIndex(function($tab_){
@@ -14,7 +16,7 @@ var get_porn_directory_id = function(cell_row){
 };
 
 var show_tooltips = function(cell){
-        return cell.getData().full_path;
+    return cell.getData().full_path;
 };
 var format_row = function(row){
     var color = {'unrecognized': '#ffc0c0', 'duplicate': '#ffffc0', 'okay': '#c0ffc0'};
@@ -36,7 +38,7 @@ var format_date = function(cell){
 };
 var format_options = function(cell){
     var status = cell.getData().status;
-    var porn_directory_id = get_porn_directory_id(cell);
+    var porn_directory_id = get_porn_directory_id(cell.getRow());
 
     var $container = $('<div>', {'class': 'options_container'});
 
@@ -142,7 +144,7 @@ var build_porn_directory_tabulator = function(porn_directory_id){
 
         columns: [
                 {title: "", field: 'movie_id', formatter: format_options, minWidth: 65, width: 65,
-                    formatterParams: {porn_directory_id: porn_directory_id}, headerSort: false, frozen: true},
+                    headerSort: false, frozen: true},
                 {title: 'Title', field: "title", formatter: "plaintext", editor: true, frozen: true,
                     minWidth: 300, variableHeight: true},
                 {title: "ID", field: "scene_id", editor: true, minWidth: 60, width: 60},
@@ -178,7 +180,7 @@ var build_target_porn_directory_tabulator = function() {
 
         columns: [
             {title: "", field: 'movie_id', formatter: format_options, minWidth: 48, width: 48,
-                formatterParams: {porn_directory_id: 0}, headerSort: false, frozen: true},
+                headerSort: false, frozen: true},
             {title: 'Title', field: "title", formatter: "plaintext", editor: true, frozen: true,
                 minWidth: 300, variableHeight: true},
             {title: "ID", field: "scene_id", editor: true, minWidth: 60, width: 60},
