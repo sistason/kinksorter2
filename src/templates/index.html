@@ -7,13 +7,15 @@
         <div class="directory_function_box sort_target_box">
             <div class="header">Sort Target</div>
             <div class="function_box">
-                <img title="Sort target with move" src="/static/img/sort_move.png"
-                     class="img_functions" id="img_sort_target_move" />
-                <img title="Sort target with link" src="/static/img/sort_link.png"
-                     class="img_functions" id="img_sort_target_link" />
+                <img title="Sort target" src="/static/img/sort.png"
+                     class="img_functions" id="img_sort_target" />
             </div>
             Create the target directory by<br />
-            <span style="color: green">moving</span> / <span style="color:orange">linking</span><br />
+            <select id="sort_target_action">
+                <option value="link">Linking</option>
+                <option value="move">Moving</option>
+                <option value="cmd">Listing</option>
+            </select><br />
             the movies from their directories.
             <br />
             <span id="sorting_response">---</span>

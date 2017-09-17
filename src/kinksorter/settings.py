@@ -139,4 +139,4 @@ DIRECTORY_STATIC_LINK_NAME = 'directory_links'
 DIRECTORY_LINKS = os.path.join(STATICFILES_DIRS[0], DIRECTORY_STATIC_LINK_NAME)
 os.makedirs(DIRECTORY_LINKS, exist_ok=True)
 
-CURRENT_TASK = {}
+TARGET_DIRECTORY_PATH = os.path.abspath(os.path.join(BASE_DIR, '../..'))

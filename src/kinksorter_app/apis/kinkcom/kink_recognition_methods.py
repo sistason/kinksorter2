@@ -163,12 +163,13 @@ class KinkRecognitionMethods:
 
     @staticmethod
     def recognize_shootid(shootid_img):
-        with tempfile.NamedTemporaryFile(suffix='.png') as f_:
+        with tempfile.NamedTemporaryFile(suffix='.png', delete=True) as f_:
             tmp_path = f_.name
-        _, t_ = cv2.threshold(shootid_img, 100, 255, cv2.THRESH_BINARY)
-        cv2.imwrite(tmp_path, t_)
-        out = subprocess.run(['tesseract', tmp_path, 'stdout', 'digits'], stdout=subprocess.PIPE)
-        output = out.stdout.decode()
+            _, t_ = cv2.threshold(shootid_img, 100, 255, cv2.THRESH_BINARY)
+            cv2.imwrite(tmp_path, t_)
+            out = subprocess.run(['tesseract', tmp_path, 'stdout', 'digits'], stdout=subprocess.PIPE)
+            output = out.stdout.decode()
+
         if ' ' in output:
             output = output.replace(' ', '')
         if output is not None and output.strip().isdigit():

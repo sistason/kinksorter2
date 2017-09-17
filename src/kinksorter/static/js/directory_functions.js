@@ -10,10 +10,11 @@ var toggle_update_tables = function() {
         $cb_refresh.prop('src', '/static/img/refresh_off.png')
     }
 };
-var sort_target = function(move) {
+var sort_target = function() {
+    var action = $('#sort_target_action').val();
     $.ajax({
         url: '/sort',
-        data: {'move': move},
+        data: {'action': action},
         error: function(xhr, status, error){
             var error_response = error;
             var $sorting_response = $('#sorting_response');
@@ -40,8 +41,7 @@ var revert_target = function() {
 var build_sorting = function() {
     $('#cb_refresh').click(toggle_update_tables);
 
-    $('#img_sort_target_move').click(function() {sort_target(true)});
-    $('#img_sort_target_link').click(function() {sort_target(false)});
+    $('#img_sort_target').click(sort_target);
 
     $('#img_revert_target').click(revert_target);
 

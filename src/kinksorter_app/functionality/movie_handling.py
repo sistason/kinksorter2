@@ -1,9 +1,8 @@
-import logging
 from django.core.exceptions import ObjectDoesNotExist
 
-from django_q.tasks import async, Iter, result, fetch
+from django_q.tasks import async, fetch
 from kinksorter_app.apis.api_router import APIS
-from kinksorter_app.models import Movie, FileProperties, PornDirectory
+from kinksorter_app.models import Movie, FileProperties, PornDirectory, CurrentTask
 from kinksorter_app.functionality.status import hook_set_task_ended
 
 
@@ -11,10 +10,20 @@ def recognize_multiple(movie_ids, movies=None, wait_for_finish=True):
     tasks_ = []
     if movie_ids:
         for movie_id in movie_ids:
-            tasks_.append(async(recognize_movie, None, movie_id, hook=hook_set_task_ended))
+            task_id = async(recognize_movie, None, movie_id, hook=hook_set_task_ended)
+
+            task_ = CurrentTask(name='recognize_movie: {}'.format(movie_id), task_id=task_id)
+            task_.save()
+
+            tasks_.append(task_id)
     elif movies is not None:
         for movie in movies:
-            tasks_.append(async(recognize_movie, movie, None, hook=hook_set_task_ended))
+            task_id = async(recognize_movie, movie, None, hook=hook_set_task_ended)
+
+            task_ = CurrentTask(name='recognize_movie: {}'.format(movie.id), task_id=task_id)
+            task_.save()
+
+            tasks_.append(task_id)
 
     if not wait_for_finish:
         return
@@ -25,16 +34,6 @@ def recognize_multiple(movie_ids, movies=None, wait_for_finish=True):
         if res is not None and res.result is not None:
             recognized.append(res.result.serialize())
 
-    """
-    async_ = Iter(recognize_movie)
-    [async_.append(None, movie_id) for movie_id in movie_ids]
-    async_.run()
-
-    recognized_task = async_.fetch(wait=2000)
-    print(recognized_task)
-    if recognized_task is not None:
-        print([rec for rec in recognized_task.result])
-        return [rec.serialize() for rec in recognized_task.result if rec is not None]"""
     return recognized
 
 

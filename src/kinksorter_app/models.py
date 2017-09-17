@@ -99,9 +99,7 @@ class PornDirectory(models.Model):
 
 
 class CurrentTask(models.Model):
-    cluster_id = models.SmallIntegerField()
-    func = models.CharField(max_length=100, default='')
+    name = models.CharField(max_length=200)
+    task_id = models.CharField(max_length=50, null=True)
     started = models.DateTimeField(default=django.utils.timezone.now)
-    name = models.CharField(max_length=100)
-    task_id = models.CharField(max_length=50)
     ended = models.BooleanField(default=False)
