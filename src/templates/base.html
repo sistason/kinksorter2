@@ -10,16 +10,31 @@
         <link rel="stylesheet" href="{% static 'css/dist/tabulator_bootstrap.min.css' %}" type="text/css" />
         <link rel="stylesheet" href="{% static 'css/dist/tabulator.min.css' %}" type="text/css" />
         <link rel="stylesheet" href="{% static 'css/style.css' %}" type="text/css" />
+        {% block style %}{% endblock %}
 
         <script type="text/javascript" src="{% static 'js/dist/jquery-3.2.1.min.js' %}"></script>
         <script type="text/javascript" src="{% static 'js/dist/jquery-ui.min.js' %}"></script>
         <script type="text/javascript" src="{% static 'js/dist/tabulator.min.js' %}"></script>
         <script type="text/javascript" src="{% static 'js/tabulator_functions.js' %}"></script>
-        <script type="text/javascript" src="{% static 'js/directory_functions.js' %}"></script>
         <script type="text/javascript" src="{% static 'js/core_functions.js' %}"></script>
+        {% block script %}{% endblock %}
     </head>
 
     <body>
+        <div class="tab_container">
+            <div class="current_tasks_box">
+                Current Tasks:&nbsp;
+                <span id="current_tasks"></span>
+            </div>
+
+            <a href="/management"><button class="item management">Management</button></a>
+            <a href="/sorting"><button class="item sorting">Sorting</button></a>
+
+            <img title="Refresh every 10sec?" src="/static/img/refresh_on.png"
+                 class='img_functions refresh_img' id="cb_refresh" />
+
+            <div class="stopfloater"></div>
+        </div>
         {% block content %}{% endblock %}
     </body>
 </html>

@@ -3,8 +3,12 @@ from django.http.response import HttpResponse
 from kinksorter_app.functionality.movie_handling import get_movie
 
 
-def index(request):
-    return render(request, 'index.html')
+def management(request):
+    return render(request, 'management.html')
+
+
+def sorting(request):
+    return render(request, 'sorting.html')
 
 
 def play_video(request, movie_id):

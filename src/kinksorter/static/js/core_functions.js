@@ -1,9 +1,9 @@
 var update_tables_timer_id;
 
 var add_porn_directory = function(e) {
-    var $porn_directory_name = $('.add_directory_box .input_name');
-    var $porn_directory_path = $('.add_directory_box .input_path');
-    var $porn_directory_read_only = $('.add_directory_box .input_ro');
+    var $porn_directory_name = $('.porn_directory_0 .input_name');
+    var $porn_directory_path = $('.porn_directory_0 .input_path');
+    var $porn_directory_read_only = $('.porn_directory_0 .input_ro');
 
     $.ajax({
         url: "/porn_directory/add",
@@ -19,9 +19,28 @@ var add_porn_directory = function(e) {
             build_porn_directory_container(porn_directory_id);
             build_porn_directory_tabulator(porn_directory_id);
             parse_update_tables_response(data, porn_directory_id);
+
+            $('#add_porn_directory_response_text')
+                .css({'color': 'green'})
+                .text('New porn directory successfully added!');
+            var $response = $('.add_porn_directory_response');
+            $response.show('slow');
+            var hide_response_delayed = function() {
+                $response.slideUp(1000);
+            };
+            setInterval(hide_response_delayed, 5000);
+
         },
         error: function(xhr, status, error){
-           //TODO: show status/errors
+            $('#add_porn_directory_response_text')
+                .css({'color': 'red'})
+                .text(xhr.responseText);
+            var $response = $('.add_porn_directory_response');
+            $response.show('slow');
+            var hide_response_delayed = function() {
+                $response.slideUp(1000);
+            };
+            setInterval(hide_response_delayed, 10000);
         }
     });
 };
@@ -51,7 +70,33 @@ var delete_porn_directory = function(porn_directory_id){
         }
     });
 };
+var clear_target_porn_directory = function(){
+    $.ajax({
+        url: '/porn_directory/clear_target',
+        success: function(data){
+            $("#target_porn_directory_tabulator").tabulator('clearData');
+            update_tables();
+            // update status TODO: doesn't work
+            porn_directory_table_ids.forEach(function(porn_directory_id){
+                var rows = $("#porn_directory_" + porn_directory_id + "_tabulator").tabulator('getRows');
+                for (var i=0; i<rows.length; i++){
+                    var current_row = rows[i];
+                    if (current_row.getData().status == 'in_main'){
+                        current_row.update({movie_id: 0});
+                        current_row.update({movie_id: movie_id});
+                    }
+                }
+            });
 
+        }
+    });
+};
+
+var scan_target = function() {
+    $.ajax({
+        url: '/porn_directory/scan_target/'
+    });
+};
 var delete_movie = function(row) {
     var movie_id = row.getData().movie_id;
     $.ajax({
@@ -135,6 +180,8 @@ var remove_movie_from_target = function(row) {
                 for (var i=0; i<rows.length; i++){
                     var current_row = rows[i];
                     if (current_row.getData().movie_id == row.getData().movie_id){
+                        //TODO: status != okay! status not in_target, otherwise unknown.
+                        //   Rewrite okay/unrecognized to redetect here
                         current_row.update({status: 'okay', movie_id: 1});
                         current_row.update({movie_id: movie_id});
 
@@ -244,6 +291,18 @@ var recognize_porn_directory = function(porn_directory_id, force) {
     }
 };
 
+var toggle_update_tables = function() {
+    var $cb_refresh = $('#cb_refresh');
+    if (!update_tables_timer_id){
+        update_tables_timer_id = setInterval(update_tables, 10000);
+        $cb_refresh.prop('src', '/static/img/refresh_on.png')
+    }
+    else {
+        clearInterval(update_tables_timer_id);
+        update_tables_timer_id = null;
+        $cb_refresh.prop('src', '/static/img/refresh_off.png')
+    }
+};
 var initial_parse_update_tables_response = function(data, porn_directory_id) {
     if (!tables_built) {
         setTimeout(function () {initial_parse_update_tables_response(data, porn_directory_id)}, 10);
@@ -352,63 +411,6 @@ var update_current_task = function(){
 
 };
 
-$(document).ready(function(){
-    $.ajax({
-        url: '/porn_directory/get_ids',
-        success: function (data) {
-            porn_directory_table_ids = data;
-
-            // start update, so the ajax can run while building the storages
-            update_tables();
-
-            build_sorting();
-            build_tables();
-
-            setInterval(update_current_task, 1000);
-            update_tables_timer_id = setInterval(update_tables, 10000);
-        }
-    });
-
-    var i = 0;
-    var dragging = false;
-    $('#dragbar').mousedown(function(e){
-       e.preventDefault();
-
-       dragging = true;
-       var main = $('#porn_directory_tables_container');
-       var ghostbar = $('<div>',
-                        {id:'ghostbar',
-                         css: {
-                                height: main.outerHeight(),
-                                top: main.offset().top,
-                                left: main.offset().left
-                               }
-                        }).appendTo('body');
-
-        $(document).mousemove(function(e){
-          ghostbar.css("left",e.pageX+2);
-       });
-    });
-    $(document).mouseup(function(e){
-       if (dragging) {
-           var percentage = (e.pageX / window.innerWidth) * 100;
-           var mainPercentage = 100-percentage;
-
-           $('#target_porn_directory_container').css("width",(percentage-2) + "%");
-           $('#porn_directory_tables_container').css("width",(mainPercentage-2) + "%");
-           $('#ghostbar').remove();
-           $(document).unbind('mousemove');
-           dragging = false;
-
-           // TODO: necessary?
-           porn_directory_table_ids.forEach(function(i){
-               $("#porn_directory_"+i+"_tabulator").tabulator("redraw");
-           });
-           $("#target_porn_directory_tabulator").tabulator("redraw");
-       }
-    });
-
-    $('.delete').click(function(e) {
-        return window.confirm("Are you sure to delete that?");
-    });
+$(document).ready(function() {
+    $('#cb_refresh').click(toggle_update_tables);
 });

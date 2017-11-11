@@ -1,0 +1,48 @@
+
+#dragbar{
+    width: 3px;
+    float: left;
+    background-color:black;
+    height:800px;
+    cursor: col-resize;
+    border: inset thin white;
+    margin-top: 150px;
+    margin-bottom: 20%;
+    margin-left: 7px;
+    margin-right: 0;
+}
+#ghostbar{
+  width:3px;
+  background-color:black;
+  opacity:0.5;
+  position:absolute;
+  cursor: col-resize;
+  z-index:999;
+}
+
+#porn_directory_tables_container {
+    float: right;
+    width: 48%;
+    padding-right: 2px;
+    padding-left: 2px;
+}
+.porn_directory_0 table {
+    width: 100%;
+}
+.porn_directory_0 .add_porn_directory_response td {
+    text-align: center;
+    line-height: normal;
+}
+.porn_directory_0 label {
+    font-size: small;
+}
+
+.delete_porn_directory {
+    color: red;
+    text-align: right;
+}
+.column_header_container .img_add_porn_directory {
+    text-align: left;
+    width: 1%;
+    padding-right: 10px;
+}

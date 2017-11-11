@@ -1,0 +1,36 @@
+
+.sorting_container {
+    float: right;
+    width: 20%;
+    background-color: #EEEEEE;
+    border-radius: 5px;
+    margin-top: 10px;
+}
+
+.directory_function_box {
+    font-size: small;
+    border: 1px solid grey;
+    padding: 5px;
+    text-align: center;
+}
+.directory_function_box .header {
+    text-align: center;
+    font-weight: bold;
+}
+.directory_function_box .function_box {
+    text-align: center;
+}
+
+.sort_action_explanation {
+    margin-top: 5px;
+    background-color: #DDDDDD;
+    font-size: smaller;
+}
+
+#sorting_response, #revert_response {
+    background-color: #EEaaaa;
+}
+
+#target_porn_directory_container {
+    width: 75%;
+}

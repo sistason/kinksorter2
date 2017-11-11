@@ -1,7 +1,7 @@
 from django.http.response import HttpResponse, JsonResponse
 
 from kinksorter_app.functionality.directory_handling import PornDirectoryHandler, \
-    get_porn_directory_ids, get_porn_directory_info_and_content
+    get_porn_directory_ids, get_porn_directory_info_and_content, get_target_porn_directory
 from kinksorter_app.models import CurrentTask
 
 
@@ -10,7 +10,7 @@ def add_new_porn_directory_request(request):
     if not porn_directory_path:
         return HttpResponse('No porn_directory_path in request', status=400)
 
-    if CurrentTask.objects.filter(name__ne='Scanning').exists():
+    if CurrentTask.objects.exclude(name='Scanning').exists():
         return HttpResponse('Task running! Wait for completion!.', status=503)
 
     porn_directory_name = request.GET.get('porn_directory_name')
@@ -24,7 +24,7 @@ def add_new_porn_directory_request(request):
 
 
 def update_porn_directory_request(request):
-    if CurrentTask.objects.filter(name__ne='Scanning').exists():
+    if CurrentTask.objects.exclude(name='Scanning').exists():
         return HttpResponse('Task running! Wait for completion!.', status=503)
 
     dir_handler, response = get_porn_directory_handler_by_id(request)
@@ -35,8 +35,17 @@ def update_porn_directory_request(request):
     return HttpResponse('Directory updating', status=200)
 
 
+def scan_target_porn_directory_request(request):
+    if CurrentTask.objects.exclude(name='Scanning').exists():
+        return HttpResponse('Task running! Wait for completion!.', status=503)
+
+    dir_handler = PornDirectoryHandler(0)
+    dir_handler.scan()
+    return HttpResponse('Target directory scanning', status=200)
+
+
 def reset_porn_directory_request(request):
-    if CurrentTask.objects.filter(name__ne='Scanning').exists():
+    if CurrentTask.objects.exclude(name='Scanning').exists():
         return HttpResponse('Task running! Wait for completion!.', status=503)
 
     dir_handler, response = get_porn_directory_handler_by_id(request)
@@ -77,6 +86,12 @@ def delete_porn_directory_request(request):
 
     dir_handler.delete()
     return HttpResponse('Directory deleted', status=200)
+
+
+def clear_target_porn_directory_request(request):
+    target = get_target_porn_directory()
+    target.movies.clear()
+    return HttpResponse('Target cleared', status=200)
 
 
 def get_porn_directory_request(request):

@@ -2,7 +2,7 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from django_q.tasks import async, fetch
 from kinksorter_app.apis.api_router import APIS
-from kinksorter_app.models import Movie, FileProperties, PornDirectory, CurrentTask
+from kinksorter_app.models import Movie, FileProperties, PornDirectory, CurrentTask, TargetPornDirectory
 from kinksorter_app.functionality.status import hook_set_task_ended
 
 import logging
@@ -73,9 +73,10 @@ def delete_movie(movie_id):
     return bool([movie.delete() for movie in Movie.objects.filter(id=movie_id)])
 
 
-def remove_movie_from_target(movie_id, target_porn_directory):
+def remove_movie_from_target(movie_id):
     try:
         movie = get_movie(movie_id)
+        target_porn_directory = TargetPornDirectory.objects.get()
         if movie and target_porn_directory:
             return target_porn_directory.movies.remove(movie)
     except (ObjectDoesNotExist, ValueError):

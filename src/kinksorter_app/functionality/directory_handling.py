@@ -3,9 +3,11 @@ import logging
 import copy
 import os
 
-from django_q.tasks import async
+from django.db.models import F
+from django.db import transaction
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 
+from django_q.tasks import async
 from kinksorter.settings import DIRECTORY_LINKS
 from kinksorter_app.models import PornDirectory, Movie, FileProperties, TargetPornDirectory, CurrentTask
 from kinksorter_app.apis.api_router import get_correct_api, APIS
@@ -95,20 +97,29 @@ class PornDirectoryHandler:
 
 class MovieScanner:
     def __init__(self, porn_directory, apis):
-        self.apis = apis
+        self.apis = apis    # save in this instance to be able to pickle to the cluster
         self.porn_directory = porn_directory
         self.directory_tree = DirectoryTree(porn_directory.path)
         self._num_trees = 0
 
     def scan(self):
         self._get_listing(self.directory_tree, recursion_depth=5)
-        CurrentTask(name='Scanning', progress_max=self._num_trees).save()
+
+        with transaction.atomic():
+            task, _ = CurrentTask.objects.get_or_create(name='Scanning')
+            task.progress_max += self._num_trees
+            task.save()
+
         return async(self._scan_tree, self.directory_tree)
 
     def _get_listing(self, tree, recursion_depth=0):
         recursion_depth -= 1
         for entry in os.scandir(tree.path):
             try:
+                if os.path.basename(entry.path).startswith('.'):
+                    # skip hidden files (and avoid scanning .git and .kinksorter)
+                    # it's your porn folder. there shouldn't be any more hidden files IN that ;)
+                    continue
                 if entry.is_dir() and recursion_depth > 0:
                     api = tree.api if tree.api else get_correct_api(entry.name, self.apis)
                     new_tree = DirectoryTree(entry.path, prev=tree, api=api)
@@ -118,7 +129,7 @@ class MovieScanner:
                     self._get_listing(new_tree, recursion_depth)
 
                 if entry.is_file() or entry.is_symlink():
-                    tree.leafs.append(Leaf(entry.path))
+                    tree.leafs.append(Leaf(entry.path, self.directory_tree.path))
                     self._num_trees += 1
             except OSError:
                 pass
@@ -128,18 +139,19 @@ class MovieScanner:
                             level=logging.DEBUG)
         for leaf in tree.leafs:
             logging.debug('Scanning file {}...'.format(leaf.full_path[-100:]))
+
             if leaf.is_writeable() and leaf.is_video_file():
                 logging.debug('  Adding movie {}...'.format(leaf.full_path[-100:]))
-                current_task = CurrentTask.objects.get(name='Scanning')
                 try:
                     self.add_movie(leaf, tree)
-                    current_task.progress_current += 1
-                    current_task.save()
                 except ObjectDoesNotExist:
                     # Directory does not exist anymore. Was deleted, so abort Task
+                    current_task = CurrentTask.objects.get(name='Scanning')
                     current_task.progress_current = current_task.progress_max
                     current_task.save()
                     return
+
+            CurrentTask.objects.filter(name='Scanning').update(progress_current=F('progress_current')+1)
 
         for next_tree in tree.nodes:
             self._scan_tree(next_tree)
@@ -150,7 +162,8 @@ class MovieScanner:
             logging.debug('    No API.')
             return
 
-        if not PornDirectory.objects.filter(id=self.porn_directory.id).exists():
+        is_target = type(self.porn_directory) is TargetPornDirectory
+        if not is_target and not PornDirectory.objects.filter(id=self.porn_directory.id).exists():
             # Remove race condition movies
             for movie in self.porn_directory.movies.all():
                 movie.delete()
@@ -160,15 +173,19 @@ class MovieScanner:
             logging.debug('    Duplicate movie.')
             return
 
-        relative_path = leaf.full_path[len(self.directory_tree.path)+1:]
-        file_properties = FileProperties(full_path=leaf.full_path,
-                                         file_name=leaf.get_file_name(),
-                                         file_size=leaf.get_file_size(),
-                                         extension=leaf.get_extension(),
-                                         relative_path=relative_path)
+        if leaf.get_is_link():
+            link_path = os.path.realpath(leaf.full_path)
+            if Movie.objects.filter(file_properties__full_path=link_path).exists():
+                logging.debug('    Linked Movie is from other porn directory')
+                return
+
+        file_properties = leaf.get_file_properties()
         file_properties.save()
 
         movie = Movie(file_properties=file_properties, api=api.name)
+        if is_target:
+            # if we're scanning the target, movies are considered already sorted
+            movie.sorted_properties = file_properties
         movie.save()
 
         recognize_movie(movie, None, api=api)
@@ -181,6 +198,7 @@ class MovieScanner:
 
 
 class DirectoryTree:
+    # TODO: Maybe rename node/leaf to directory/movie?
 
     def __init__(self, path, prev=None, api=None, leafs=None, nodes=None):
         self.leafs = []
@@ -199,8 +217,9 @@ class DirectoryTree:
 
 
 class Leaf:
-    def __init__(self, full_path):
+    def __init__(self, full_path, directory_path):
         self.full_path = full_path
+        self.directory_path = directory_path
 
     def is_writeable(self):
         return os.access(self.full_path, os.W_OK)
@@ -221,6 +240,20 @@ class Leaf:
 
     def get_extension(self):
         return os.path.splitext(self.full_path)[-1]
+
+    def get_is_link(self):
+        return os.path.islink(self.full_path)
+
+    def get_relative_path(self):
+        return self.full_path[len(self.directory_path) + 1:]
+
+    def get_file_properties(self):
+        return FileProperties(full_path=self.full_path,
+                              file_name=self.get_file_name(),
+                              file_size=self.get_file_size(),
+                              extension=self.get_extension(),
+                              is_link=self.get_is_link(),
+                              relative_path=self.get_relative_path())
 
     def __deepcopy__(self, memodict=None):
         return self
