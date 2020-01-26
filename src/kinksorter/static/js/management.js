@@ -30,7 +30,7 @@ var build_dragbar = function() {
            $(document).unbind('mousemove');
            dragging = false;
 
-           // TODO: necessary?
+           // redraw tables to fill now-unused space
            porn_directory_table_ids.forEach(function(i){
                $("#porn_directory_"+i+"_tabulator").tabulator("redraw");
            });
@@ -40,24 +40,16 @@ var build_dragbar = function() {
 };
 
 $(document).ready(function(){
-    $.ajax({
-        url: '/porn_directory/get_ids',
-        success: function (data) {
-            porn_directory_table_ids = data;
+    setup();
+    build_target_porn_directory_tabulator();
 
-            // start update, so the ajax can run while building the storages
-            update_tables();
+    update_tables();
 
-            build_tables();
-
-            setInterval(update_current_task, 1000);
-            update_tables_timer_id = setInterval(update_tables, 10000);
-        }
-    });
+    setInterval(update_current_task, 1000);
+    update_tables_timer_id = setInterval(update_tables, 10000);
 
     build_dragbar();
 
-    $('.tab_container .management').addClass('active');
     $('.delete').click(function(e) {
         return window.confirm("Are you sure to delete that?");
     }); //TODO: not working

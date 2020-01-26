@@ -12,12 +12,30 @@
                    <tr>
                        <!-- Left -->
                        <td class="column_manage">
-                           <input id="target_porn_directory_path" type="text" placeholder="/path/to/target"/><br />
-                           <img title="Rescan target" class="img_functions" id="rescan_target"
-                                src="{% static 'img/rescan_porn_directory.png' %}"/>
-                           &nbsp;
-                           <img title="Clear target" class="img_functions" id="clear_target"
-                                src="{% static 'img/delete.png' %}"/>
+                           <table>
+                               <tr>
+                                   <td colspan="3">
+                                       <input id="target_porn_directory_path" type="text" placeholder="/path/to/target"/>
+                                   </td>
+                               </tr>
+                               <tr>
+                                   <td>
+                                       <img title="Rescan target" class="img_functions" id="rescan_target"
+                                            src="{% static 'img/rescan_porn_directory.png' %}"/>
+                                   </td>
+                                   <td>
+                                       <img title="Clear target" class="img_functions" id="clear_target"
+                                            src="{% static 'img/delete.png' %}"/>
+                                   </td>
+                                   <td>
+                                       <div>
+                                            <img title="Revert previously moved movies back to their directories"
+                                                 src="{% static 'img/revert.png' %}" class="img_functions" id="img_revert_target" />
+                                            <span id="revert_response">---</span>
+                                       </div>
+                                   </td>
+                               </tr>
+                           </table>
                        </td>
 
                        <!-- Middle -->
@@ -30,14 +48,26 @@
                        <td class="column_sort">
                            <table align="right">
                                <tr>
+                                   <td colspan="2">
+                                       <div data-tip="A python string to call .format() on. variables available:<br >
+                                       movie (Object, attributes: .api, .scene_id, .full_path, .file_name, .file_size, .extension, .relative_path)
+                                       scene (JSON, keys: {title:str, shootid:int, date:unix_ts}
+                                       site_name (str, like 'Hogtied')
+                                       performers (str, like 'name, name, name')
+                                       api (str, like 'Kink.com')
+
+                                       example: '{movie.full_path}: {scene[title]} with {performers} at {scene[date]: %y} by {api}'
+">
+                                           Format:
+                                           <input id="#sort_file_format" placeholder="{scene[title]} - [{scene[shootid]}].{movie.extension}" />
+                                       </div>
+
+                                       <!-- TODO: Tooltip -->
+                                       <!-- TODO: Tooltip -->
+                                   </td>
+                               </tr>
+                               <tr>
                                    <td>
-                                       <div class="directory_function_box sort_target_box">
-                                        <div class="header">Sort Target</div>
-                                        <div class="function_box">
-                                            <img title="Sort movies into the target directory from their directories."
-                                                 src="{% static 'img/sort.png' %}"
-                                                 class="img_functions" id="img_sort_target" />
-                                        </div>
                                         <select id="sort_target_action">
                                             <option value="">-</option>
                                             <option value="move">Moving</option>
@@ -72,17 +102,15 @@
                                                 </div>
                                         </div>
                                         <span id="sorting_response">---</span>
-                                    </div>
                                    </td>
                                    <td>
-                                    <div class="directory_function_box revert_target_box">
-                                        <div class="header">Revert Target</div>
-                                        <div class="function_box">
-                                            <img title="Revert previously moved movies back to their directories"
-                                                 src="{% static 'img/revert.png' %}" class="img_functions" id="img_revert_target" />
-                                        </div>
-                                        <span id="revert_response">---</span>
-                                    </div>
+                                       <div class="block function" id="sort_target">
+                                           <div class="function_box" style="vertical-align: middle;">
+                                                <img title="Sort movies into the target directory from their directories."
+                                                     src="{% static 'img/sort.png' %}" class="img_functions" />
+                                           </div>
+                                           <div>Sort</div>
+                                       </div>
                                    </td>
                                </tr>
                            </table>
@@ -97,7 +125,27 @@
         <div id="dragbar">&nbsp;</div>
 
         <div id="porn_directory_tables_container">
-
+            <div class="porn_directory_0 porn_directory">
+                <table>
+                    <tr>
+                        <td>
+                            <img class="img_functions" title="Add directory"
+                                 src="{% static 'img/add_porn_directory.png' %}" id="img_add_directory" />
+                                <!-- TODO  -->
+                        </td>
+                        <td>
+                            <input class='input_name' name='porn_directory_name' placeholder='Porn directory name' />
+                            <input class='input_path' name='porn_directory_path' placeholder='Porn directory path' />
+                        </td>
+                    </tr>
+                    <tr class='add_porn_directory_response' hidden="true">
+                        <td colspan="3">
+                            <span id='add_porn_directory_response_text'></span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <hr />
         </div>
 
         <div class="stopfloater"></div>

@@ -21,16 +21,6 @@ def get_scene_from_movie(movie):
     return {}
 
 
-def get_target_path(movie, scene):
-    target_base = PornDirectory.objects.get(id=0).path
-    site_pathname = scene.get('site', {}).get('name', '_unsorted')
-
-    new_filename = "{title} [{shootid}]{extension}".format(title=scene.get('title'),
-                                                           shootid=scene.get('shootid'),
-                                                           extension=movie.extension)
-    return path.join(target_base, site_pathname, new_filename)
-
-
 class Movie(models.Model):
     api = models.CharField(max_length=50, null=True)
     # scene_properties contains an id to find the properties again with the specified API
@@ -65,16 +55,13 @@ class Movie(models.Model):
             elif PornDirectory.objects.get(id=0).movies.filter(scene_id=self.scene_id).exists():
                 status = 'duplicate'
 
-        target_path = get_target_path(self, scene)
-
         return {
                 'directory_id': porn_directory.id,
-                'directory_name': porn_directory.name if porn_directory.id else '',
+                'directory_name': porn_directory.name if self.from_directory else '',
                 'type': 'movie',
                 'movie_id': self.id,
                 'api': '' if DEBUG_SFW else self.api,
                 'full_path': self.full_path,
-                'target_path': target_path,
                 'title': '' if DEBUG_SFW else (scene.get('title') if 'title' in scene else self.file_name),
                 'scene_site': '' if DEBUG_SFW else scene.get('site', {}).get('name'),
                 'scene_date': scene.get('date'),
@@ -91,6 +78,7 @@ class PornDirectory(models.Model):
     path = models.CharField(max_length=500)
     date_added = models.DateTimeField(default=datetime.datetime.now)
     movies = models.ManyToManyField(Movie)
+    sort_format = models.CharField(max_length=100, default="{title} [{shootid}]{extension}")
 
     def serialize(self):
         return {
@@ -111,6 +99,9 @@ class PornDirectory(models.Model):
                 return
 
         symlink(self.path, link_path)
+
+    def validate_sort_format(self, fmt):
+        return
 
 
 class CurrentTask(models.Model):

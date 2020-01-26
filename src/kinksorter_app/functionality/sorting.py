@@ -5,7 +5,7 @@ import os
 from django.http import HttpResponse, JsonResponse
 from django_q.tasks import async_task, Iter, result, fetch
 from kinksorter_app.apis.api_router import APIS
-from kinksorter_app.models import PornDirectory, Movie, CurrentTask, get_scene_from_movie, get_target_path
+from kinksorter_app.models import PornDirectory, Movie, CurrentTask, get_scene_from_movie
 from kinksorter_app.functionality.status import get_current_task, hook_set_task_ended
 from kinksorter_app.functionality.directory_handling import Leaf, get_target_porn_directory
 
@@ -15,22 +15,13 @@ def get_current_task_request(request):
     return JsonResponse(task, safe=False)
 
 
-def sort_directory_into_target_request(request):
-    action_ = request.GET.get('action')
-    directory_id = request.GET.get('directory_id')
-
-    movies = PornDirectory.objects.get(id=directory_id).movies.all()
-
-    return sort_into_target(action_, movies)
-
-
 def sort_movie_into_target_request(request):
     action_ = request.GET.get('action')
     movie_id = request.GET.get('movie_id')
 
     movie = Movie.objects.get(id=movie_id)
 
-    return sort_into_target(action_, [movie])
+    return sort_into_target(action_, movies=[movie])
 
 
 def sort_into_target(action_, movies):
@@ -58,7 +49,7 @@ def sort_target_request(request):
         return HttpResponse('Task running! Wait for completion before sorting.', status=503)
 
     sorter = TargetSorter(action_)
-    async_task(sorter.sort_target)
+    async_task(sorter.sort)
 
     task_ = CurrentTask(name='Sorting', progress_max=get_target_porn_directory().movies.count())
     task_.save()
@@ -75,7 +66,7 @@ def revert_target_request(request):
     task_ = CurrentTask(name='Reverting', progress_max=movies.count())
     task_.save()
 
-    sorter = TargetSorter('', movies)
+    sorter = TargetSorter('')
     async_task(sorter.revert_target)
 
     return HttpResponse('reverting started', status=200)
@@ -84,24 +75,12 @@ def revert_target_request(request):
 class TargetSorter:
     def __init__(self, action, movies=None):
         self.action = action
-        self.movies = movies if movies is not None else []
+        self.target_directory = get_target_porn_directory()
+
+        self.movies = movies if movies is not None else self.target_directory.movies.all()
+        self.sort_format = self.target_directory.sort_format
         # Shopping list holds a list of which movies to get of this directory
         self.movie_list = []
-
-    def sort_target(self):
-        logging.basicConfig(format='%(message)s', level=logging.DEBUG)
-        logging.info('Sorting...')
-
-        current_task, _ = CurrentTask.objects.get_or_create(name='Sorting')
-        for movie in get_target_porn_directory().movies.all():
-            logging.debug('Sorting movie {}...'.format(movie.file_name))
-
-            self._sort_movie(movie)
-
-            current_task.progress_current += 1
-            current_task.save()
-
-        return True
 
     def sort(self):
         logging.basicConfig(format='%(message)s', level=logging.DEBUG)
@@ -199,10 +178,24 @@ class TargetSorter:
         old_size = movie.file_size
         return new_size > old_size
 
-    @staticmethod
-    def _build_new_movie_path(movie):
+    def _build_new_movie_path(self, movie):
         scene = get_scene_from_movie(movie)
-        target_path = get_target_path(movie, scene)
+        target_base = PornDirectory.objects.get(id=0).path
+        if scene:
+            site_pathname = scene.get('site', {}).get('name')
+            performers = ', '.join([i.get('name', 'API-Error') for i in scene.get('performers')])
+            api = movie.api.name
+
+            new_filename = self.sort_format.format(movie=movie,
+                                                   scene=scene,
+                                                   site_name=site_pathname,
+                                                   performers=performers,
+                                                   api=api)
+        else:
+            site_pathname = '_unsorted'
+            new_filename = movie.file_name
+
+        target_path = os.path.join(target_base, site_pathname, new_filename)
 
         os.makedirs(os.path.dirname(target_path), exist_ok=True)
 

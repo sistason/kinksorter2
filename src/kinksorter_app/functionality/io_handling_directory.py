@@ -121,3 +121,16 @@ def get_porn_directory_handler_by_id(request):
 def get_porn_directory_ids_request(request):
     return JsonResponse(get_porn_directory_ids(), safe=False)
 
+
+def change_sort_file_format_request(request):
+    new_format = request.GET.get('file_format')
+    target = get_target_porn_directory()
+
+    if not target.validate_sort_format(new_format):
+        return HttpResponse('Format invalid', status=400)
+
+    target.sort_format = new_format
+    target.save()
+
+    return HttpResponse('Format changed', status=200)
+
