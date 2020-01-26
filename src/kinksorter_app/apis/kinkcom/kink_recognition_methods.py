@@ -76,6 +76,8 @@ class KinkRecognitionMethods:
         try:
             json_output = json.loads(o.stdout.decode())
             title = json_output.get('format').get('tags').get('title')
+            if title.startswith('All performers over'):
+                return 0
             return int(title.split('.')[0].split()[-1])
         except (ValueError, IndexError, AttributeError, json.JSONDecodeError):
             return 0

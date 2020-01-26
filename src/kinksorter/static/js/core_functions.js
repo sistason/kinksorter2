@@ -44,6 +44,15 @@ var add_porn_directory = function(e) {
         }
     });
 };
+
+var recreate_target_porn_directory = function(e) {
+    console.log(e);
+    $.ajax({
+        url: "/porn_directory/recreate_target",
+    })
+};
+
+
 var change_porn_directory_name = function(porn_directory_id, name){
     $.ajax({
         url: '/porn_directory/change_name',
@@ -92,9 +101,43 @@ var clear_target_porn_directory = function(){
     });
 };
 
-var scan_target = function() {
+var sort_target = function() {
+    var action = $('#sort_target_action').val();
     $.ajax({
-        url: '/porn_directory/scan_target/'
+        url: '/sort_target',
+        data: {'action': action},
+        error: function(xhr, status, error){
+            var error_response = error;
+            var $sorting_response = $('#sorting_response');
+            $sorting_response.text(error_response).show();
+            $sorting_response.fadeOut(5000);
+        }
+    });
+};
+var revert_target = function() {
+    $.ajax({
+        url: '/revert_target',
+        success: function(data){
+            return;
+        },
+        error: function(xhr, status, error){
+            var error_response = error;
+            var $sorting_response = $('#revert_response');
+            $sorting_response.text(error_response).show();
+            $sorting_response.fadeOut(5000);
+        }
+    });
+};
+
+var rescan_target = function() {
+    var $target_porn_directory_path = $('.target_porn_directory_path');
+    console.log($target_porn_directory_path.val());
+    $.ajax({
+        url: '/porn_directory/rescan_target/',
+        data: {porn_directory_path: $target_porn_directory_path.val()},
+        success: function(data){
+            $("#target_porn_directory_tabulator").tabulator('clearData');
+        }
     });
 };
 var delete_movie = function(row) {
@@ -367,10 +410,15 @@ var parse_update_tables_response = function(data, porn_directory_id){
         $tabulator.tabulator("deleteRow", deleted_data[d].id);
 };
 var update_tables = function(){
-    var porn_directory_ids = porn_directory_table_ids.concat([0]);
-    porn_directory_ids.forEach(function (porn_directory_id) {
-        update_table(porn_directory_id);
+    $.ajax({
+        url: '/porn_directory/get_ids',
+        success: function(data){
+            data.forEach(function (porn_directory_id) {
+                update_table(porn_directory_id);
+            });
+        }
     });
+
 };
 var update_table = function(porn_directory_id){
     $.ajax({

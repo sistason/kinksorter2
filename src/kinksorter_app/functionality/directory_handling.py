@@ -7,9 +7,8 @@ from django.db.models import F
 from django.db import transaction
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 
-from django_q.tasks import async
-from kinksorter.settings import DIRECTORY_LINKS
-from kinksorter_app.models import PornDirectory, Movie, FileProperties, TargetPornDirectory, CurrentTask
+from django_q.tasks import async_task
+from kinksorter_app.models import PornDirectory, Movie, CurrentTask
 from kinksorter_app.apis.api_router import get_correct_api, APIS
 from kinksorter_app.functionality.movie_handling import recognize_movie, recognize_multiple
 
@@ -18,33 +17,28 @@ class PornDirectoryHandler:
     scanner = None
     directory = None
 
-    def __init__(self, porn_directory, name='', read_only=False, init_path=None):
+    def __init__(self, porn_directory, name='', init_path=None, id_=-1):
         if porn_directory is None and init_path is not None:
-            if not os.path.exists(init_path) or \
-               not read_only and not os.access(init_path, os.W_OK):
+            if not os.path.exists(init_path):
                 return
 
             if PornDirectory.objects.filter(path=os.path.abspath(init_path)).exists() \
                or name and PornDirectory.objects.filter(name=name).exists():
                 return
 
-            new_porn_dir = PornDirectory(path=os.path.abspath(init_path), name=name, is_read_only=read_only)
+            # new_id = max(get_porn_directory_ids()) + 1 if id_ == -1 else id_
+            new_id = None if id_ == -1 else id_
+            new_porn_dir = PornDirectory(path=os.path.abspath(init_path), name=name, pk=new_id)
             new_porn_dir.save()
 
+            new_porn_dir.create_link_for_video()
+
             self.directory = new_porn_dir
-            self.link_porn_directory()
         else:
             self.directory = get_porn_directory(porn_directory)
 
         if self.directory is not None:
             self.scanner = MovieScanner(self.directory, APIS)
-
-    def link_porn_directory(self):
-        link_path = os.path.join(DIRECTORY_LINKS, str(self.directory.id))
-        if os.path.exists(link_path):
-            os.unlink(link_path)
-
-        os.symlink(self.directory.path, link_path)
 
     def reset(self):
         for movie in self.directory.movies.all():
@@ -54,10 +48,10 @@ class PornDirectoryHandler:
         return self.scan()
 
     def rerecognize(self):
-        target_directory = get_target_porn_directory()
+        target_directory = PornDirectory.objects.get(id=0)
         unrecognized_movies = []
         for movie in self.directory.movies.all():
-            movie.scene_properties = 0
+            movie.scene_id = 0
             movie.save()
 
             if target_directory:
@@ -85,12 +79,6 @@ class PornDirectoryHandler:
 
             self.directory.delete()
 
-            link_path = os.path.join(DIRECTORY_LINKS, str(self.directory.id))
-            try:
-                os.unlink(link_path)
-            except os.error:
-                pass
-
     def __bool__(self):
         return self.directory is not None
 
@@ -104,13 +92,12 @@ class MovieScanner:
 
     def scan(self):
         self._get_listing(self.directory_tree, recursion_depth=5)
-
         with transaction.atomic():
             task, _ = CurrentTask.objects.get_or_create(name='Scanning')
             task.progress_max += self._num_trees
             task.save()
 
-        return async(self._scan_tree, self.directory_tree)
+        return async_task(self._scan_tree, self.directory_tree)
 
     def _get_listing(self, tree, recursion_depth=0):
         recursion_depth -= 1
@@ -162,36 +149,29 @@ class MovieScanner:
             logging.debug('    No API.')
             return
 
-        is_target = type(self.porn_directory) is TargetPornDirectory
-        if not is_target and not PornDirectory.objects.filter(id=self.porn_directory.id).exists():
+        if not PornDirectory.objects.filter(id=self.porn_directory.id).exists():
             # Remove race condition movies
             for movie in self.porn_directory.movies.all():
                 movie.delete()
             raise ObjectDoesNotExist
 
-        if self.porn_directory.movies.filter(file_properties__full_path=leaf.full_path).exists():
+        if self.porn_directory.movies.filter(full_path=leaf.full_path).exists():
             logging.debug('    Duplicate movie.')
             return
 
         if leaf.get_is_link():
             link_path = os.path.realpath(leaf.full_path)
-            if Movie.objects.filter(file_properties__full_path=link_path).exists():
+            if Movie.objects.filter(full_path=link_path).exists():
                 logging.debug('    Linked Movie is from other porn directory')
                 return
 
-        file_properties = leaf.get_file_properties()
-        file_properties.save()
-
-        movie = Movie(file_properties=file_properties, api=api.name)
-        if is_target:
-            # if we're scanning the target, movies are considered already sorted
-            movie.sorted_properties = file_properties
+        movie = Movie(api=api.name, **leaf.get_file_properties(), from_directory=self.porn_directory.id)
         movie.save()
 
         recognize_movie(movie, None, api=api)
 
         self.porn_directory.movies.add(movie)
-        logging.info('ADDED MOVIE {}...'.format(movie.scene_properties))
+        logging.info('ADDED MOVIE {}...'.format(movie.scene_id))
 
     def __deepcopy__(self, memodict=None):
         return self
@@ -246,14 +226,16 @@ class Leaf:
 
     def get_relative_path(self):
         return self.full_path[len(self.directory_path) + 1:]
-
+    
     def get_file_properties(self):
-        return FileProperties(full_path=self.full_path,
-                              file_name=self.get_file_name(),
-                              file_size=self.get_file_size(),
-                              extension=self.get_extension(),
-                              is_link=self.get_is_link(),
-                              relative_path=self.get_relative_path())
+        return {
+            "full_path": self.full_path,
+            "file_name": self.get_file_name(),
+            "file_size": self.get_file_size(),
+            "extension": self.get_extension(),
+            "is_link": self.get_is_link(),
+            "relative_path": self.get_relative_path()
+        }
 
     def __deepcopy__(self, memodict=None):
         return self
@@ -261,22 +243,11 @@ class Leaf:
 
 def get_porn_directory(directory_id):
     try:
-        directory_id = int(directory_id)
-        if directory_id == 0:
-            return get_target_porn_directory()
         return PornDirectory.objects.get(id=int(directory_id))
     except ObjectDoesNotExist:
         return None
     except ValueError:
         return False
-
-
-def get_target_porn_directory():
-    try:
-        return TargetPornDirectory.objects.get_or_create()[0]
-    except MultipleObjectsReturned:
-        # Race Condition only
-        return
 
 
 def get_porn_directory_info_and_content(porn_directory=None, porn_directory_id=''):
@@ -302,3 +273,7 @@ def get_movies_of_porn_directory(porn_directory):
 
 def get_porn_directory_ids():
     return [s.id for s in PornDirectory.objects.only('pk')]
+
+
+def get_target_porn_directory():
+    return PornDirectory.objects.get(id=0)

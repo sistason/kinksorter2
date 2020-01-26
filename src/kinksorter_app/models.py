@@ -1,29 +1,20 @@
 from django.db import models
 import django.utils.timezone
 import datetime
-from os import path
+from os import path, symlink, remove
 import logging
 
-from kinksorter.settings import BASE_DIR, DEBUG_SFW, DIRECTORY_STATIC_LINK_NAME, STATIC_URL, TARGET_DIRECTORY_PATH
+from kinksorter.settings import DEBUG_SFW, STATIC_LINKED_DIRECTORIES, DIRECTORY_LINKS
 from kinksorter_app.apis.api_router import APIS
 
 
-class FileProperties(models.Model):
-    full_path = models.CharField(max_length=500)
-    file_name = models.CharField(max_length=200)
-    file_size = models.IntegerField()
-    extension = models.CharField(max_length=10)
-    relative_path = models.CharField(max_length=300)
-    is_link = models.BooleanField(default=False)
-
-
 def get_scene_from_movie(movie):
-    if movie.scene_properties:
+    if movie.scene_id:
         api = APIS.get(movie.api, APIS.get('default'))
         if api:
-            scenes = api.query('shoot', 'shootid', movie.scene_properties)
+            scenes = api.query('shoot', 'shootid', movie.scene_id)
             if len(scenes) > 1:
-                logging.warning('Multiple scenes for shootid {} found! ({})'.format(movie.scene_properties, scenes))
+                logging.warning('Multiple scenes for shootid {} found! ({})'.format(movie.scene_id, scenes))
             scene = scenes[0]
             if scene.get('exists'):
                 return scene
@@ -31,85 +22,68 @@ def get_scene_from_movie(movie):
 
 
 def get_target_path(movie, scene):
+    target_base = PornDirectory.objects.get(id=0).path
     site_pathname = scene.get('site', {}).get('name', '_unsorted')
-    new_site_path = path.join(TARGET_DIRECTORY_PATH, site_pathname)
 
-    new_filename = "{title} [{shootid}]{f.extension}".format(title=scene.get('title'),
-                                                              shootid=scene.get('shootid'),
-                                                              f=movie.file_properties)
-    return path.join(new_site_path, new_filename)
+    new_filename = "{title} [{shootid}]{extension}".format(title=scene.get('title'),
+                                                           shootid=scene.get('shootid'),
+                                                           extension=movie.extension)
+    return path.join(target_base, site_pathname, new_filename)
 
 
 class Movie(models.Model):
     api = models.CharField(max_length=50, null=True)
-    file_properties = models.OneToOneField(FileProperties, related_name='file_properties')
-    sorted_properties = models.OneToOneField(FileProperties, related_name='sorted_properties', null=True)
     # scene_properties contains an id to find the properties again with the specified API
-    scene_properties = models.IntegerField(default=0)
+    scene_id = models.IntegerField(default=0)
+
+    full_path = models.CharField(max_length=500)
+    file_name = models.CharField(max_length=200)
+    file_size = models.IntegerField()
+    extension = models.CharField(max_length=10)
+    relative_path = models.CharField(max_length=300)
+    is_link = models.BooleanField(default=False)
+    from_directory = models.IntegerField(default=0)
 
     def serialize(self):
-        status = 'okay'
-
         scene = get_scene_from_movie(self)
-        if not scene:
-            status = 'unrecognized'
+        porn_directory = self.porndirectory_set.get()
 
-        #in_target = self.targetporndirectory_set.exists()
-        in_target = TargetPornDirectory.objects.get().movies.filter(scene_properties=self.scene_properties).exists()
-        if status == 'okay' and in_target:
-            status = 'duplicate'
+        status = 'done' if self.from_directory == 0 else 'okay'
+
+        if porn_directory.id == 0:
+            if not scene:
+                status = 'unrecognized'
+        else:
+            # is duplicate if unrecognized, is not the original, and name exists in Target
+            if not scene:
+                if PornDirectory.objects.get(id=0).movies.filter(relative_path=self.relative_path).exists():
+                    status = 'duplicate'
+                else:
+                    status = 'unrecognized'
+
+            # is duplicate if recognized, is not the original, and id exists in Target
+            elif PornDirectory.objects.get(id=0).movies.filter(scene_id=self.scene_id).exists():
+                status = 'duplicate'
 
         target_path = get_target_path(self, scene)
-        if not self.sorted_properties or not path.exists(target_path):
-            sorted_state = 'missing'
-        else:
-            if path.islink(target_path):
-                sorted_state = 'link'
-            else:
-                sorted_state = 'exists'
 
-        if self.porndirectory_set.exists():
-            porn_directory = self.porndirectory_set.get()
-        else:
-            porn_directory = self.targetporndirectory_set.get()
         return {
-                'directory_name': porn_directory.name,
                 'directory_id': porn_directory.id,
+                'directory_name': porn_directory.name if porn_directory.id else '',
                 'type': 'movie',
                 'movie_id': self.id,
                 'api': '' if DEBUG_SFW else self.api,
-                'full_path': self.file_properties.full_path,
+                'full_path': self.full_path,
                 'target_path': target_path,
-                'sorted_state': sorted_state,
-                'title': '' if DEBUG_SFW else (scene.get('title') if 'title' in scene else self.file_properties.file_name),
+                'title': '' if DEBUG_SFW else (scene.get('title') if 'title' in scene else self.file_name),
                 'scene_site': '' if DEBUG_SFW else scene.get('site', {}).get('name'),
                 'scene_date': scene.get('date'),
                 'scene_id': scene.get('shootid'),
                 'status': status,
-                'in_target': in_target
         }
 
     def get_video_path(self):
-        return '{}{}/{}/{}'.format(STATIC_URL, DIRECTORY_STATIC_LINK_NAME,
-                                   self.porndirectory_set.get().id, self.file_properties.relative_path)
-
-
-class TargetPornDirectory(models.Model):
-    name = models.CharField(max_length=100, default='Target')
-    is_read_only = models.BooleanField(default=False)
-                                                    #manage.py,src, .kinksorter
-    path = models.CharField(default=path.realpath(path.join(BASE_DIR, '..', '..')), max_length=500)
-    date_added = models.DateTimeField(default=datetime.datetime.now)
-    movies = models.ManyToManyField(Movie)
-
-    def serialize(self):
-        return {
-            'porn_directory_path': path.realpath(self.path),
-            'porn_directory_date': self.date_added,
-            'porn_directory_id': 0,
-            'porn_directory_movies_count': self.movies.count(),
-            'is_target': True
-        }
+        return path.join(STATIC_LINKED_DIRECTORIES, str(self.porndirectory_set.get().id), str(self.relative_path))
 
 
 class PornDirectory(models.Model):
@@ -117,7 +91,6 @@ class PornDirectory(models.Model):
     path = models.CharField(max_length=500)
     date_added = models.DateTimeField(default=datetime.datetime.now)
     movies = models.ManyToManyField(Movie)
-    is_read_only = models.BooleanField(default=True)
 
     def serialize(self):
         return {
@@ -125,10 +98,19 @@ class PornDirectory(models.Model):
             'porn_directory_path': path.realpath(self.path),
             'porn_directory_date': self.date_added,
             'porn_directory_id': self.id,
-            'porn_directory_read_only': self.is_read_only,
             'porn_directory_movies_count': self.movies.count(),
-            'is_target': False
         }
+
+    def create_link_for_video(self):
+        link_path = path.join(DIRECTORY_LINKS, str(self.id))
+        if path.exists(link_path):
+            if path.islink(link_path):
+                remove(link_path)
+            else:
+                logging.error('Cannot relink directory "{}" to {}, there is something there!'.format(self.path, link_path))
+                return
+
+        symlink(self.path, link_path)
 
 
 class CurrentTask(models.Model):

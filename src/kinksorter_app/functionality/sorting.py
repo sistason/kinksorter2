@@ -3,12 +3,11 @@ import shutil
 import os
 
 from django.http import HttpResponse, JsonResponse
-from django_q.tasks import async, Iter, result, fetch
-from kinksorter.settings import TARGET_DIRECTORY_PATH
+from django_q.tasks import async_task, Iter, result, fetch
 from kinksorter_app.apis.api_router import APIS
-from kinksorter_app.models import TargetPornDirectory, CurrentTask, get_scene_from_movie, get_target_path
+from kinksorter_app.models import PornDirectory, Movie, CurrentTask, get_scene_from_movie, get_target_path
 from kinksorter_app.functionality.status import get_current_task, hook_set_task_ended
-from kinksorter_app.functionality.directory_handling import Leaf
+from kinksorter_app.functionality.directory_handling import Leaf, get_target_porn_directory
 
 
 def get_current_task_request(request):
@@ -16,37 +15,101 @@ def get_current_task_request(request):
     return JsonResponse(task, safe=False)
 
 
-def sort_into_target(request):
+def sort_directory_into_target_request(request):
     action_ = request.GET.get('action')
+    directory_id = request.GET.get('directory_id')
 
-    if not action_ or action_ not in ['move', 'link', 'cmd']:
+    movies = PornDirectory.objects.get(id=directory_id).movies.all()
+
+    return sort_into_target(action_, movies)
+
+
+def sort_movie_into_target_request(request):
+    action_ = request.GET.get('action')
+    movie_id = request.GET.get('movie_id')
+
+    movie = Movie.objects.get(id=movie_id)
+
+    return sort_into_target(action_, [movie])
+
+
+def sort_into_target(action_, movies):
+    if not action_ or action_ not in ['move', 'copy', 'cmd', 'list']:
         return HttpResponse('action needs to be a valid value', status=400)
 
-    if CurrentTask.objects.exists():
+    if CurrentTask.objects.count():
         return HttpResponse('Task running! Wait for completion before sorting.', status=503)
 
-    sorter = TargetSorter(action=action_)
-    async(sorter.sort)
+    sorter = TargetSorter(action_, movies)
+    async_task(sorter.sort)
 
-    task_ = CurrentTask(name='Sorting', progress_max=TargetPornDirectory.objects.get().movies.count())
+    task_ = CurrentTask(name='Sorting', progress_max=len(movies))
     task_.save()
 
     return HttpResponse('sorting started', status=200)
 
 
+def sort_target_request(request):
+    action_ = request.GET.get('action')
+    if not action_ or action_ not in ['move']:
+        return HttpResponse('action needs to be a valid value', status=400)
+
+    if CurrentTask.objects.count():
+        return HttpResponse('Task running! Wait for completion before sorting.', status=503)
+
+    sorter = TargetSorter(action_)
+    async_task(sorter.sort_target)
+
+    task_ = CurrentTask(name='Sorting', progress_max=get_target_porn_directory().movies.count())
+    task_.save()
+
+    return HttpResponse('sorting started', status=200)
+
+
+def revert_target_request(request):
+    movies = PornDirectory.objects.get(id=0).movies.all()
+
+    if CurrentTask.objects.count():
+        return HttpResponse('Task running! Wait for completion before reverting.', status=503)
+
+    task_ = CurrentTask(name='Reverting', progress_max=movies.count())
+    task_.save()
+
+    sorter = TargetSorter('', movies)
+    async_task(sorter.revert_target)
+
+    return HttpResponse('reverting started', status=200)
+
+
 class TargetSorter:
-    def __init__(self, action='link'):
+    def __init__(self, action, movies=None):
         self.action = action
-        # Shopping list holds tuple of ('action', from, target, target_dir)
-        self.shopping_list = []
+        self.movies = movies if movies is not None else []
+        # Shopping list holds a list of which movies to get of this directory
+        self.movie_list = []
+
+    def sort_target(self):
+        logging.basicConfig(format='%(message)s', level=logging.DEBUG)
+        logging.info('Sorting...')
+
+        current_task, _ = CurrentTask.objects.get_or_create(name='Sorting')
+        for movie in get_target_porn_directory().movies.all():
+            logging.debug('Sorting movie {}...'.format(movie.file_name))
+
+            self._sort_movie(movie)
+
+            current_task.progress_current += 1
+            current_task.save()
+
+        return True
 
     def sort(self):
         logging.basicConfig(format='%(message)s', level=logging.DEBUG)
         logging.info('Sorting...')
 
-        current_task = CurrentTask.objects.get(name='Sorting')
-        for movie in TargetPornDirectory.objects.get().movies.all():
-            logging.debug('Sorting movie {}...'.format(movie.file_properties.file_name))
+        current_task, _ = CurrentTask.objects.get_or_create(name='Sorting')
+        for movie in self.movies:
+            logging.debug('Sorting movie {}...'.format(movie.file_name))
 
             self._sort_movie(movie)
 
@@ -61,14 +124,14 @@ class TargetSorter:
         return True
 
     def _get_shopping_list(self):
-        return '\n'.join([from_ for (cmd, from_, target_, target_dir_) in self.shopping_list])
+        return '\n'.join([from_ for (cmd, from_, target_, target_dir_) in self.movie_list])
 
     def _get_cmd_list(self):
         return '\n'.join(['mkdir -p {}\n{} "{}" "{}"'.format(target_dir_, cmd, from_, target_) for
-                          (cmd, from_, target_, target_dir_) in self.shopping_list])
+                          (cmd, from_, target_, target_dir_) in self.movie_list])
 
     def _sort_movie(self, movie):
-        if not os.path.exists(movie.file_properties.full_path):
+        if not os.path.exists(movie.full_path):
             logging.warning(' Movie-path does not exist anymore!')
             return
 
@@ -78,29 +141,20 @@ class TargetSorter:
             self._list_movie(movie, new_movie_path)
             return
 
-        if self.action == 'move' and os.path.islink(new_movie_path):
-            # When replacing links, remove the link beforehand (:/$ mv a_file a_link: Error! Same file!)
-            os.remove(new_movie_path)
-
         if os.path.exists(new_movie_path):
             # Only overwrite file when the new movie is "better" (quality)
             if not self._is_new_movie_better(movie, new_movie_path):
                 logging.warning('Existing file "{}" is equal or better than new file "{}", skipping...'.format(
-                    new_movie_path, movie.file_properties.full_path))
+                    new_movie_path, movie.full_path))
                 return
 
-        if self.action == 'link':
-            self._link_movie(movie, new_movie_path)
-        elif self.action == 'move':
-            self._move_movie(movie, new_movie_path)
-        else:
-            logging.error('action "{}" not yet implemented!'.format(self.action))
+        self._act_movie(movie, new_movie_path)
 
     def _list_movie(self, movie, target_movie_path):
         existing_file = target_movie_path if os.path.exists(target_movie_path) else None
 
         delete = []
-        for position, _, c, p, _ in enumerate(self.shopping_list):
+        for position, _, c, p, _ in enumerate(self.movie_list):
             if p == target_movie_path:
                 if self._is_new_movie_better(movie, c) and self._is_new_movie_better(movie, existing_file):
                     # Mark for deletion, as this new movie is better than the one in the list
@@ -110,84 +164,39 @@ class TargetSorter:
                     break
         else:
             for i in delete:
-                del self.shopping_list[i]
+                del self.movie_list[i]
 
             target_directory = os.path.dirname(target_movie_path)
-            if os.access(movie.file_properties.full_path, os.W_OK):
-                self.shopping_list.append(('mv', movie.file_properties.full_path, target_movie_path, target_directory))
+            if os.access(movie.full_path, os.W_OK):
+                self.movie_list.append(('mv', movie.full_path, target_movie_path, target_directory))
             else:
-                self.shopping_list.append(('cp', movie.file_properties.full_path, target_movie_path, target_directory))
+                self.movie_list.append(('cp', movie.full_path, target_movie_path, target_directory))
 
         return None
 
-    def _link_movie(self, movie, target_movie_path):
-        if os.path.exists(target_movie_path):
-            if os.path.islink(target_movie_path):
-                # File has not to exist for os.symlink
-                os.remove(target_movie_path)
-            else:
-                logging.warning(
-                    'File "{}" already existed! We only link files, skipping...'.format(target_movie_path))
-                return
-
-        if self._cleanup_previously_sorted(movie, target_movie_path):
-            # File already moved to new location
-            return
-
-        os.symlink(movie.file_properties.full_path, target_movie_path)
-        self._save_sorted_properties(movie, target_movie_path)
-
-    @staticmethod
-    def _save_sorted_properties(movie, target_movie_path):
-        movie.sorted_properties = Leaf(target_movie_path, TARGET_DIRECTORY_PATH).get_file_properties()
-        movie.sorted_properties.save()
-        movie.save()
-
-    @staticmethod
-    def _cleanup_previously_sorted(movie, target_movie_path):
-        """
-        If the movie was sorted before, delete that file if it is a link or move that file to the new position.
-        Note that we cannot know if the original directory exists and if moving it back there (in case of now linking
-        movies) is the right thing to do at all. The link/move distinction was only made to protect original
-        directories, so if the file is already in the target directory, we can just ignore this precaution.
-        Keep in mind that because of this, directories are only safe to delete if there wasn't moved anything in
-        in-between!
-
-        :param movie:
-        :param target_movie_path:
-        :return: True if the file was moved (skip further processing), None for continuing
-        """
-        if movie.sorted_properties:
-            if not movie.sorted_properties.is_link:
-                # was sorted before, use that file to clean up and for speed (probably same filesystem)
-                shutil.move(movie.sorted_properties.full_path, target_movie_path)
-                return True
-            else:
-                # was sorted before, remove previous file/link
-                os.remove(movie.sorted_properties.full_path)
-            movie.sorted_properties.delete()
-
-    def _move_movie(self, movie, target_movie_path):
-        if self._cleanup_previously_sorted(movie, target_movie_path):
-            # File already moved to new location
-            return
+    def _act_movie(self, movie, target_movie_path):
+        if os.path.islink(target_movie_path):
+            # When replacing links, remove the link beforehand (:/$ mv a_file a_link: Error! Same file!)
+            os.remove(target_movie_path)
 
         try:
-            if not os.access(movie.file_properties.full_path, os.W_OK) or \
-                    any([dir_.is_read_only for dir_ in movie.porndirectory_set.all()]):
-                shutil.copy(movie.file_properties.full_path, target_movie_path)
+            if self.action == 'move':
+                shutil.move(movie.full_path, target_movie_path)
+            elif self.action == 'copy':
+                shutil.copy(movie.full_path, target_movie_path)
             else:
-                shutil.move(movie.file_properties.full_path, target_movie_path)
+                return
 
-            self._save_sorted_properties(movie, target_movie_path)
-        except os.error:
-            pass
+        except os.error as e:
+            logging.warning(
+                'File "{}" could not be {}}! {}'.format(target_movie_path, self.action, e))
+            return
 
     @staticmethod
     def _is_new_movie_better(movie, new_movie_path):
         # This can get arbitrarily complex (bitrate, resolution, encoding, etc)
         new_size = os.stat(new_movie_path).st_size
-        old_size = movie.file_properties.file_size
+        old_size = movie.file_size
         return new_size > old_size
 
     @staticmethod
@@ -199,13 +208,20 @@ class TargetSorter:
 
         return scene, target_path
 
-    def revert(self):
+    def revert_target(self):
         logging.info('Reverting"...')
 
-        current_task = CurrentTask.objects.get(name='Reverting')
+        target_directory = PornDirectory.objects.get(id=0)
+        current_task, _ = CurrentTask.objects.get_or_create(name='Reverting')
 
-        for movie in TargetPornDirectory.objects.get().movies.all():
+        for movie in self.movies:
+            if movie.is_original:
+                continue
+
             self._revert_movie(movie)
+
+            target_directory.movies.remove(movie)
+            movie.delete()
 
             current_task.progress_current += 1
             current_task.save()
@@ -213,10 +229,13 @@ class TargetSorter:
         logging.info('Finished reverting')
 
     def _revert_movie(self, movie):
-        original_path = movie.file_properties.full_path
+        original_path = movie.full_path
         scene, current_path = self._build_new_movie_path(movie)
         if os.path.exists(original_path):
-            os.remove(current_path)
+            try:
+                os.remove(current_path)
+            except FileNotFoundError:
+                pass
             return
 
         if not os.path.exists(current_path):
@@ -236,18 +255,3 @@ class TargetSorter:
         # if it's the last movie, remove the site-directory
         if not os.listdir(os.path.dirname(current_path)):
             os.rmdir(os.path.dirname(current_path))
-
-
-def revert_target(request):
-    if CurrentTask.objects.exist():
-        return HttpResponse('Task running! Wait for completion before reverting.', status=503)
-
-    task_ = CurrentTask(name='Reverting', progress_max=TargetPornDirectory.objects.get().movies.count())
-    task_.save()
-
-    sorter = TargetSorter()
-    async(sorter.revert)
-
-    return HttpResponse('reverting started', status=200)
-
-

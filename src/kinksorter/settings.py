@@ -48,11 +48,13 @@ Q_CLUSTER = {
     'recycle': 10,      # big tasks -> often recycle workers
     'save_limit': 10,   # try to minimize database_size
     'catch_up': False,  # try to minimize database_size
+    'orm': 'default',
 }
 
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -160,14 +162,12 @@ LOGGING = {
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.10/howto/static-files/
 
+
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'kinksorter', 'static')]
 STATIC_ROOT = os.path.join(BASE_DIR, 'kinksorter', 'static_collected')
 
-
-# User content
-DIRECTORY_STATIC_LINK_NAME = 'directory_links'
-DIRECTORY_LINKS = os.path.join(STATICFILES_DIRS[0], DIRECTORY_STATIC_LINK_NAME)
+# User content (to get the videos via static/, as it needs to be under the root
+STATIC_LINKED_DIRECTORIES = os.path.join(STATIC_URL, 'directory_links')
+DIRECTORY_LINKS = os.path.join(STATIC_ROOT, 'directory_links')
 os.makedirs(DIRECTORY_LINKS, exist_ok=True)
-
-TARGET_DIRECTORY_PATH = os.path.abspath(os.path.join(BASE_DIR, '../..'))

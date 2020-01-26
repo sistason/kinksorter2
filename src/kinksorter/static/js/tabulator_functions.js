@@ -29,12 +29,12 @@ var format_sorted = function(cell) {
     return icon[state];
 };
 var format_row = function(row){
-    var color = {'unrecognized': '#ffc0c0', 'duplicate': '#ffffc0', 'okay': '#c0ffc0'};
+    var color = {'unrecognized': '#ffc0c0', 'duplicate': '#99ddff', 'okay': '#c0ffc0', 'done': '#ffffff'};
 
     var status = row.getData().status;
 
-    if (get_porn_directory_id(row) == 0 && status == 'duplicate')
-        status = 'okay';
+//    if (get_porn_directory_id(row) == 0 && status == 'duplicate')
+//        status = 'okay';
 
     row.getElement().css({"background-color": color[status]});
 };
@@ -94,19 +94,13 @@ var build_new_porn_directory_container = function() {
         'placeholder': 'Porn directory name'});
     var $new_porn_directory_input_path = $('<input>', {'class': 'input_path', 'name': 'porn_directory_path',
         'placeholder': 'Porn directory path'});
-    var $new_porn_directory_input_ro = $('<input>', {'class': 'input_ro', 'name': 'porn_directory_read_only',
-        'type': 'checkbox', 'id': 'cb_input_ro'});
-    var $new_porn_directory_label_ro = $('<label>', {'for': 'cb_input_ro'}).text('Read Only?');
     var $new_porn_directory_response = $('<span>', {'id': 'add_porn_directory_response_text'});
 
     var $new_porn_directory_tr = $('<tr>')
         .append($('<td>').append($new_porn_directory_img))
         .append($('<td>')
             .append($new_porn_directory_input_name)
-            .append($new_porn_directory_input_path))
-        .append($('<td>')
-            .append($new_porn_directory_input_ro)
-            .append($new_porn_directory_label_ro));
+            .append($new_porn_directory_input_path));
 
     var $new_porn_directory_response_tr = $('<tr>', {'class': 'add_porn_directory_response', 'hidden': true})
         .append($('<td>', {'colspan': 3})
@@ -216,10 +210,9 @@ var build_porn_directory_tabulator = function(porn_directory_id){
 var set_porn_directory_header = function(porn_directory_info, porn_directory_id){
     var $porn_directory_name = $('<span>', {'class': 'porn_directory_name'})
         .text(porn_directory_info.porn_directory_name).prop('contentEditable', true);
-    var read_only = ((porn_directory_info.porn_directory_read_only) ? " [read_only]" : "");
     var $porn_directory_params = $('<span>', {'class': 'porn_directory_params'})
         .text(porn_directory_info.porn_directory_path +
-            " (" + porn_directory_info.porn_directory_movies_count + " titles)" + read_only);
+            " (" + porn_directory_info.porn_directory_movies_count + " titles)");
 
     $(".porn_directory_" + porn_directory_id + " .column_header").html("Directory ")
         .append($porn_directory_name).append("<br />").append($porn_directory_params);
@@ -227,33 +220,39 @@ var set_porn_directory_header = function(porn_directory_info, porn_directory_id)
             change_porn_directory_name(porn_directory_id, $(this).text())});
 };
 
-var build_target_porn_directory_header_container = function() {
-    return $('<table>', {'class': "column_header_container"}).append(
-        $('<tr>')
-            .append($('<td>', {'class': "img_add_porn_directory"})
-                .append($('<img>', {'title': 'Scan for initial movies', 'class': 'img_functions',
-                    'src': '/static/img/rescan_porn_directory.png'})
-                    .click(function() {scan_target()})
-                )
-            )
-            .append($('<td>', {'class': "column_header"})
-                .append($('<span>', {'class': 'porn_directory_name'}).text('Target Directory').append($('<br>')))
-                .append($('<span>', {'class': 'porn_directory_params'}).html('&nbsp;'))
-            )
-            .append($('<td>', {'class': "img_delete_porn_directory"})
-                .append($('<img>', {'title': 'Clear target directory', 'class': 'img_functions',
-                    'src': '/static/img/delete.png'})
-                    .click(clear_target_porn_directory)
-                )
-            )
-        );
-};
-var build_target_porn_directory_container = function() {
-    var $header_container = build_target_porn_directory_header_container();
-    var $tabulator_container = $("<div>", {'id': 'target_porn_directory_tabulator'});
+var setup_target_porn_directory_container = function() {
+    $('#rescan_target').click(rescan_target);
+    $('#clear_target').click(clear_target_porn_directory);
 
-    $("#target_porn_directory_container").append($header_container).append($tabulator_container);
+    $('#img_sort_target').click(sort_target);
+
+    $('.sort_action_explanation').accordion({header: 'span', heightStyle: "content"});
+    var show_explanation = function(){
+        var $accordion = $('.sort_action_explanation');
+
+        var actions = ['move', 'copy', 'list', 'cmd'];
+        var action = $('#sort_target_action').val();
+
+        if (actions.indexOf(action) == -1){
+            $accordion.hide();
+            return
+        }
+        $accordion.accordion('option', 'active', actions.findIndex(function(a_){return a_==action}));
+        $accordion.show();
+    };
+    $('#sort_target_action').change(show_explanation).trigger("change");
+
+    $('#img_revert_target').click(revert_target);
+
+    $('#img_add_directory').click(add_porn_directory);
+
+    $('#sorting_response').hide();
+    $('#revert_response').hide();
+    $('#add_directory_response').hide();
 };
+
+
+
 var build_target_porn_directory_tabulator = function() {
     var $target = $("#target_porn_directory_tabulator").tabulator({
         movableColumns: true,
@@ -286,10 +285,12 @@ var set_target_porn_directory_header = function(porn_directory_info){
     $("#target_porn_directory_container" + " .porn_directory_params")
         .text(porn_directory_info.porn_directory_path +
             " (" + porn_directory_info.porn_directory_movies_count + " titles)");
+    $("#target_porn_directory_container" + " #target_porn_directory_path")
+        .attr('placeholder', porn_directory_info.porn_directory_path)
 };
 
 var build_tables = function() {
-    build_target_porn_directory_container();
+    setup_target_porn_directory_container();
     build_target_porn_directory_tabulator();
 
     var $container = $("#porn_directory_tables_container");
@@ -297,6 +298,7 @@ var build_tables = function() {
     $container.append($new_porn_directory_container).append($('<hr>'));
 
     for (var index in porn_directory_table_ids) {
+        if (index == 0) continue;
         var porn_directory_id = porn_directory_table_ids[index];
         var $porn_directory_container = build_porn_directory_container(porn_directory_id);
         $container.append($porn_directory_container).append($('<hr>'));

@@ -1,16 +1,104 @@
 {% extends "base.html" %}
-{% load staticfiles %}
+{% load static %}
 
-{% block style %}<link rel="stylesheet" href="{% static 'css/management.css' %}" type="text/css" />{% endblock %}
+{% block style %}<link rel="stylesheet/less" href="{% static 'css/management.less' %}" type="text/css" />{% endblock %}
 {% block script %}<script type="text/javascript" src="{% static 'js/management.js' %}"></script>{% endblock %}
 
 {% block content %}
     <div class="tabulators">
-        <div id="target_porn_directory_container"></div>
+        <div id="target_porn_directory_container">
+            <div id="target_porn_directory_header_container">
+                <table class="column_header_container">
+                   <tr>
+                       <!-- Left -->
+                       <td class="column_manage">
+                           <input id="target_porn_directory_path" type="text" placeholder="/path/to/target"/><br />
+                           <img title="Rescan target" class="img_functions" id="rescan_target"
+                                src="{% static 'img/rescan_porn_directory.png' %}"/>
+                           &nbsp;
+                           <img title="Clear target" class="img_functions" id="clear_target"
+                                src="{% static 'img/delete.png' %}"/>
+                       </td>
+
+                       <!-- Middle -->
+                       <td class="column_header">
+                           <span class="porn_directory_name">Target</span><br />
+                           <span class="porn_directory_params">&nbsp;</span>
+                       </td>
+
+                       <!-- Right -->
+                       <td class="column_sort">
+                           <table align="right">
+                               <tr>
+                                   <td>
+                                       <div class="directory_function_box sort_target_box">
+                                        <div class="header">Sort Target</div>
+                                        <div class="function_box">
+                                            <img title="Sort movies into the target directory from their directories."
+                                                 src="{% static 'img/sort.png' %}"
+                                                 class="img_functions" id="img_sort_target" />
+                                        </div>
+                                        <select id="sort_target_action">
+                                            <option value="">-</option>
+                                            <option value="move">Moving</option>
+                                            <option value="copy">Copying</option>
+                                            <option value="list">Listing</option>
+                                            <option value="cmd">Scripting</option>
+                                        </select>
+
+                                        <br />
+                                        <div hidden class="sort_action_explanation">
+                                            <span  class="move"></span>
+                                                <div  class="move">
+                                                    Move the file from its directory to the new, sorted path.<br />
+                                                </div>
+
+                                            <span  class="copy"></span>
+                                                <div  class="copy">
+                                                    Copy the file from its directory to the new, sorted path.<br />
+                                                </div>
+
+                                            <span  class="list"></span>
+                                                <div  class="list">
+                                                    Output a list of the files which are needed to combine the Target, without duplicates and only
+                                                    choosing the best, but also without their destinations/correct names.<br />
+                                                </div>
+
+                                            <span  class="cmd"></span>
+                                                <div  class="cmd">
+                                                    Output a shell-script, each line includes either "cp" or "mv", the source path and the
+                                                    destination path, prepended by an "mkdir -p".<br />
+                                                    Use for automation and checking/editing the results before sorting.
+                                                </div>
+                                        </div>
+                                        <span id="sorting_response">---</span>
+                                    </div>
+                                   </td>
+                                   <td>
+                                    <div class="directory_function_box revert_target_box">
+                                        <div class="header">Revert Target</div>
+                                        <div class="function_box">
+                                            <img title="Revert previously moved movies back to their directories"
+                                                 src="{% static 'img/revert.png' %}" class="img_functions" id="img_revert_target" />
+                                        </div>
+                                        <span id="revert_response">---</span>
+                                    </div>
+                                   </td>
+                               </tr>
+                           </table>
+                       </td>
+                   </tr>
+                </table>
+            </div>
+
+            <div id="target_porn_directory_tabulator"></div>
+        </div>
 
         <div id="dragbar">&nbsp;</div>
 
-        <div id="porn_directory_tables_container"></div>
+        <div id="porn_directory_tables_container">
+
+        </div>
 
         <div class="stopfloater"></div>
     </div>

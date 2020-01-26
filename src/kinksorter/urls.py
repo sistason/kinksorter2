@@ -4,18 +4,19 @@ from kinksorter_app.functionality import io_handling_directory, io_handling_movi
 from kinksorter_app import views
 
 urlpatterns = [
-    url(r'^$', views.management),
-    url(r'^management$', views.management),
-    url(r'^sorting$', views.sorting),
+    url(r'^$', views.index),
     url(r'^play_video/(?P<movie_id>\d+)/?$', views.play_video),
-    url(r'^sort/?$', sorting.sort_into_target),
+    url(r'^sort_directory_into_target/?$', sorting.sort_directory_into_target_request),
+    url(r'^sort_movie_into_target/?$', sorting.sort_movie_into_target_request),
+    url(r'^sort_target/?$', sorting.sort_target_request),
+    url(r'^revert_target/?$', sorting.revert_target_request),
     url(r'^get_current_task/?$', sorting.get_current_task_request),
 ]
 
 urlpatterns += [
     url(r'^porn_directory/add/?$', io_handling_directory.add_new_porn_directory_request),
     url(r'^porn_directory/delete/?$', io_handling_directory.delete_porn_directory_request),
-    url(r'^porn_directory/scan_target/?$', io_handling_directory.scan_target_porn_directory_request),
+    url(r'^porn_directory/rescan_target/?$', io_handling_directory.rescan_target_porn_directory_request),
     url(r'^porn_directory/clear_target/?$', io_handling_directory.clear_target_porn_directory_request),
     url(r'^porn_directory/update/?$', io_handling_directory.update_porn_directory_request),
     url(r'^porn_directory/reset/?$', io_handling_directory.reset_porn_directory_request),

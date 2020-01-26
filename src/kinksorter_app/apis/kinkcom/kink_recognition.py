@@ -11,7 +11,7 @@ class KinkRecognition:
         self.api = api
 
     def recognize(self, movie, override_name='', override_sid=0):
-        logging.debug('"{}" - recognizing...'.format(movie.file_properties.file_name))
+        logging.debug('"{}" - recognizing...'.format(movie.file_name))
 
         results = None
         if override_sid and type(override_sid) == int:
@@ -20,14 +20,14 @@ class KinkRecognition:
             if override_name:
                 shootid, sure = self.get_shootid(override_name, name_override=True)
             else:
-                shootid, sure = self.get_shootid(movie.file_properties.full_path)
+                shootid, sure = self.get_shootid(movie.full_path)
         if shootid:
             results = self.api.query('shoot', 'shootid', shootid)
 
         if results is not None and len(results) > 0:
             return results[0].get('shootid')
         else:
-            logging.info('"{}" - Nothing found, leaving untagged'.format(movie.file_properties.file_name))
+            logging.info('"{}" - Nothing found, leaving untagged'.format(movie.file_name))
 
     def get_shootid(self, file_path, name_override=False):
         shootid_cv, shootid_md, shootid_nr = 0, 0, 0

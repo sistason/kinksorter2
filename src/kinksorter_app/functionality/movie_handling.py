@@ -1,8 +1,8 @@
 from django.core.exceptions import ObjectDoesNotExist
 
-from django_q.tasks import async, fetch
+from django_q.tasks import async_task, fetch
 from kinksorter_app.apis.api_router import APIS
-from kinksorter_app.models import Movie, FileProperties, PornDirectory, CurrentTask, TargetPornDirectory
+from kinksorter_app.models import Movie, PornDirectory, CurrentTask
 from kinksorter_app.functionality.status import hook_set_task_ended
 
 import logging
@@ -19,11 +19,11 @@ def recognize_multiple(movie_ids, movies=None, wait_for_finish=True):
 
     if movie_ids:
         for movie_id in movie_ids:
-            task_id = async(recognize_movie, None, movie_id, hook=lambda f: hook_set_task_ended(f, name='Recognizing'))
+            task_id = async_task(recognize_movie, None, movie_id, hook=lambda f: hook_set_task_ended(f, name='Recognizing'))
             tasks_.append(task_id)
     elif movies is not None:
         for movie in movies:
-            task_id = async(recognize_movie, movie, None, hook=lambda f: hook_set_task_ended(f, name='Recognizing'))
+            task_id = async_task(recognize_movie, movie, None, hook=lambda f: hook_set_task_ended(f, name='Recognizing'))
             tasks_.append(task_id)
 
     if not wait_for_finish:
@@ -59,12 +59,12 @@ def recognize_movie(movie, movie_id, new_name='', new_sid=0, api=None):
     if api is None:
         api = APIS.get(movie.api) if movie.api in APIS else APIS.get('Default')
 
-    movie.scene_properties = 0
+    movie.scene_id = 0
     movie.save()
 
-    scene_properties = api.recognize(movie, override_name=new_name, override_sid=new_sid)
-    if scene_properties is not None and scene_properties != 0:
-        movie.scene_properties = scene_properties
+    scene_id = api.recognize(movie, override_name=new_name, override_sid=new_sid)
+    if scene_id is not None and scene_id != 0:
+        movie.scene_id = scene_id
         movie.save()
         return movie
 
@@ -76,17 +76,23 @@ def delete_movie(movie_id):
 def remove_movie_from_target(movie_id):
     try:
         movie = get_movie(movie_id)
-        target_porn_directory = TargetPornDirectory.objects.get()
-        if movie and target_porn_directory:
+        if movie:
+            target_porn_directory = PornDirectory.objects.get(id=0)
             return target_porn_directory.movies.remove(movie)
     except (ObjectDoesNotExist, ValueError):
         return None
 
 
-def merge_movie(movie_id, target_porn_directory):
+def merge_movie(movie_id):
     movie = get_movie(movie_id)
-    if movie is not None and target_porn_directory is not None:
-        target_porn_directory.movies.add(movie)
+    if movie is not None:
+        duplicate_movie = Movie(api=movie.api, scene_id=movie.scene_id, full_path=movie.full_path,
+                                file_name=movie.file_name, file_size=movie.file_size, extension=movie.extension,
+                                relative_path=movie.relative_path, is_link=movie.is_link,
+                                from_directory=movie.porndirectory_set.get().id)
+        duplicate_movie.save()
+        target_porn_directory = PornDirectory.objects.get(id=0)
+        target_porn_directory.movies.add(duplicate_movie)
         return movie
 
 

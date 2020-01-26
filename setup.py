@@ -46,9 +46,10 @@ class Setup:
     def _install_requirements(self):
         logging.info('  Satisfying python package requirements...')
 
-        pip = os.path.join(self.install_path, "virtualenv", "bin", "pip")
+        venv = os.path.join(self.install_path, "virtualenv", "bin", "activate")
         requirements = os.path.join(self.source_path, 'requirements.txt')
-        if not self._run_cmd([pip, 'install', '-r', requirements]):
+        if not subprocess.run("/bin/bash -c 'source {} && python -m pip install -r {}'".format(venv, requirements), shell=True):
+        #if not self._run_cmd([pip, '-m', 'pip', 'install', '-r', requirements]):
             logging.warning('Some requirements are still unsatisfied!')
             return False
 

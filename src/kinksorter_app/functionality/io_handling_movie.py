@@ -58,8 +58,7 @@ def merge_movie_request(request):
     if not movie_id or not movie_id.isdigit():
         return HttpResponse('MovieID has to be an integer', status=400)
 
-    target_porn_directory = get_target_porn_directory()
-    movie = merge_movie(movie_id, target_porn_directory)
+    movie = merge_movie(movie_id)
     if movie is None:
         return HttpResponse('No Movie with that id found', status=404)
 
@@ -71,8 +70,7 @@ def merge_multiple_movies_request(request):
     if [m for m in movie_ids if not m.isdigit()]:
         return HttpResponse('MovieIDs has to be a list of integers', status=400)
 
-    target_porn_directory = get_target_porn_directory()
-    return JsonResponse([merge_movie(movie_id, target_porn_directory).id for movie_id in movie_ids], safe=False)
+    return JsonResponse([merge_movie(movie_id).id for movie_id in movie_ids], safe=False)
 
 
 def get_movie_request(request):

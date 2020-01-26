@@ -14,9 +14,8 @@ def add_new_porn_directory_request(request):
         return HttpResponse('Task running! Wait for completion!.', status=503)
 
     porn_directory_name = request.GET.get('porn_directory_name')
-    porn_directory_read_only = True if request.GET.get('porn_directory_read_only') else False
     dir_handler = PornDirectoryHandler(None, init_path=porn_directory_path,
-                                       name=porn_directory_name, read_only=porn_directory_read_only)
+                                       name=porn_directory_name)
     if dir_handler:
         dir_handler.scan()
         return JsonResponse(get_porn_directory_info_and_content(porn_directory=dir_handler.directory), safe=False)
@@ -35,11 +34,17 @@ def update_porn_directory_request(request):
     return HttpResponse('Directory updating', status=200)
 
 
-def scan_target_porn_directory_request(request):
+def rescan_target_porn_directory_request(request):
     if CurrentTask.objects.exclude(name='Scanning').exists():
         return HttpResponse('Task running! Wait for completion!.', status=503)
 
     dir_handler = PornDirectoryHandler(0)
+    new_path = request.GET.get('porn_directory_path')
+    if new_path is not None and (dir_handler.directory is None or new_path != dir_handler.directory.path):
+        dir_handler.delete()
+
+        dir_handler = PornDirectoryHandler(None, init_path=new_path, id_=0, name='Target')
+
     dir_handler.scan()
     return HttpResponse('Target directory scanning', status=200)
 
@@ -115,5 +120,4 @@ def get_porn_directory_handler_by_id(request):
 
 def get_porn_directory_ids_request(request):
     return JsonResponse(get_porn_directory_ids(), safe=False)
-
 
