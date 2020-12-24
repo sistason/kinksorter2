@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'kinksorter_app',
 ]
 
+USE_ASYNC = False
 Q_CLUSTER = {
     'name': 'kinksorter-cluster',
     'recycle': 10,      # big tasks -> often recycle workers

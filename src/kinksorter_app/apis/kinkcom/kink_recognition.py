@@ -10,7 +10,7 @@ class KinkRecognition:
         self.methods = KinkRecognitionMethods(template_dir)
         self.api = api
 
-    def recognize(self, movie, override_name='', override_sid=0):
+    def recognize(self, movie, override_name='', override_sid=0, extensive=False):
         logging.debug('"{}" - recognizing...'.format(movie.file_name))
 
         results = None
@@ -20,7 +20,7 @@ class KinkRecognition:
             if override_name:
                 shootid, sure = self.get_shootid(override_name, name_override=True)
             else:
-                shootid, sure = self.get_shootid(movie.full_path)
+                shootid, sure = self.get_shootid(movie.full_path, extensive=extensive)
         if shootid:
             results = self.api.query('shoot', 'shootid', shootid)
 
@@ -29,12 +29,12 @@ class KinkRecognition:
         else:
             logging.info('"{}" - Nothing found, leaving untagged'.format(movie.file_name))
 
-    def get_shootid(self, file_path, name_override=False):
+    def get_shootid(self, file_path, name_override=False, extensive=False):
         shootid_cv, shootid_md, shootid_nr = 0, 0, 0
         if not name_override:
             file_name = os.path.basename(file_path)
             try:
-                shootid_cv = self.methods.get_shootid_through_image_recognition(file_path)
+                shootid_cv = self.methods.get_shootid_through_image_recognition(file_path, extensive=extensive)
             except AttributeError:
                 shootid_cv = 0
             try:
@@ -48,7 +48,7 @@ class KinkRecognition:
         if len(shootids_nr) > 1:
             if shootid_cv and shootid_cv in shootids_nr:
                 shootid_nr = shootid_cv
-            elif shootid_cv and shootid_md in shootids_nr:
+            elif shootid_md and shootid_md in shootids_nr:
                 shootid_nr = shootid_md
             else:
                 shootid_nr = 0

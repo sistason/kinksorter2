@@ -1,0 +1,5 @@
+.git/
+venv/
+src/kinksorter/static/directory_links
+src/kinksorter/static_collected/directory_links
+src/kinksorter.db

@@ -1,4 +1,5 @@
 from django.core.exceptions import ObjectDoesNotExist
+from django.conf import settings
 
 from django_q.tasks import async_task, fetch
 from kinksorter_app.apis.api_router import APIS
@@ -13,18 +14,28 @@ def recognize_multiple(movie_ids, movies=None, wait_for_finish=True):
     tasks_ = []
 
     subtasks_ = len(movie_ids) if movie_ids else len(movies) if movies is not None else 0
-    current_task, _ = CurrentTask.objects.get_or_create(name='Recognizing')
-    current_task.progress_max += subtasks_
-    current_task.save()
+    if settings.USE_ASYNC:
+        current_task, _ = CurrentTask.objects.get_or_create(name='Recognizing')
+        current_task.progress_max += subtasks_
+        current_task.save()
 
     if movie_ids:
         for movie_id in movie_ids:
-            task_id = async_task(recognize_movie, None, movie_id, hook=lambda f: hook_set_task_ended(f, name='Recognizing'))
-            tasks_.append(task_id)
+            if settings.USE_ASYNC:
+                task_id = async_task(recognize_movie, None, movie_id, hook=lambda f: hook_set_task_ended(f, name='Recognizing'))
+                tasks_.append(task_id)
+            else:
+                tasks_.append(recognize_movie(None, movie_id))
     elif movies is not None:
         for movie in movies:
-            task_id = async_task(recognize_movie, movie, None, hook=lambda f: hook_set_task_ended(f, name='Recognizing'))
-            tasks_.append(task_id)
+            if settings.USE_ASYNC:
+                task_id = async_task(recognize_movie, movie, None, hook=lambda f: hook_set_task_ended(f, name='Recognizing'))
+                tasks_.append(task_id)
+            else:
+                tasks_.append(recognize_movie(movie, None))
+
+    if not settings.USE_ASYNC:
+        return tasks_
 
     if not wait_for_finish:
         return
@@ -38,7 +49,7 @@ def recognize_multiple(movie_ids, movies=None, wait_for_finish=True):
     return recognized
 
 
-def recognize_movie(movie, movie_id, new_name='', new_sid=0, api=None):
+def recognize_movie(movie, movie_id, new_name='', new_sid=0, api=None, extensive=False):
     """ Runs recognition on the supplied movie, with override-arguments if passed
 
     This method will usually be used to run on the django-q cluster. For this reason,
@@ -62,7 +73,7 @@ def recognize_movie(movie, movie_id, new_name='', new_sid=0, api=None):
     movie.scene_id = 0
     movie.save()
 
-    scene_id = api.recognize(movie, override_name=new_name, override_sid=new_sid)
+    scene_id = api.recognize(movie, override_name=new_name, override_sid=new_sid, extensive=extensive)
     if scene_id is not None and scene_id != 0:
         movie.scene_id = scene_id
         movie.save()
@@ -83,8 +94,10 @@ def remove_movie_from_target(movie_id):
         return None
 
 
-def merge_movie(movie_id):
-    movie = get_movie(movie_id)
+def merge_movie(movie):
+    if type(movie) is int:
+        movie = get_movie(movie)
+
     if movie is not None:
         duplicate_movie = Movie(api=movie.api, scene_id=movie.scene_id, full_path=movie.full_path,
                                 file_name=movie.file_name, file_size=movie.file_size, extension=movie.extension,

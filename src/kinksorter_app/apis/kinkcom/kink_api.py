@@ -1,3 +1,4 @@
+import mutagen
 import logging
 import datetime
 import re
@@ -7,6 +8,8 @@ import json
 from kinksorter_app.apis.kinkcom.kink_recognition import KinkRecognition
 from kinksorter_app.apis.base_api import BaseAPI
 
+
+logger = logging.getLogger(__name__)
 
 class KinkAPI(BaseAPI):
     name = 'Kink.com'
@@ -29,8 +32,8 @@ class KinkAPI(BaseAPI):
 
         return channel_names if channel_names else None
 
-    def recognize(self, *args, **kwargs):
-        return self.recognition.recognize(*args, **kwargs)
+    def recognize(self, movie, *args, **kwargs):
+        return self.recognition.recognize(movie, *args, **kwargs)
 
     def query(self, type_, by_property, value):
         res = None
@@ -138,3 +141,32 @@ class KinkAPI(BaseAPI):
         for number in re.split(r'\D', performer_numbers):
             all_ = [site for site in all_ if [p for p in site.get('performers', []) if p.get('number') == number]]
         return all_
+
+    def update_metadata(self, movie, target_path):
+        metadata = mutagen.File(target_path)
+        if metadata is None:
+            logger.error(f"Could not edit metadata of file {target_path}!")
+            return
+
+        # delete all kinksorter_ tags
+        for tag in metadata.keys():
+            if tag.startswith("kinksorter_"):
+                metadata.pop(tag)
+
+        scene_data = self.shoot(movie.scene_id)[0]
+
+        for key, value in scene_data.items():
+            if type(value) in [int, str]:
+                metadata[f"kinksorter_{key}"] = str(value)
+            if key == "performers":
+                for i, performer in enumerate(value):
+                    metadata[f"kinksorter_performer{i}_name"] = str(performer.get("name"))
+                    metadata[f"kinksorter_performer{i}_number"] = str(performer.get("number"))
+            if key == "site":
+                metadata["kinksorter_site"] = str(value.get("name"))
+            if key == "tags":
+                for i, tag in enumerate(value):
+                    metadata[f"kinksorter_tag{i}"] = str(tag.get("name"))
+
+        metadata.save()
+        return True

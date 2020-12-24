@@ -5,7 +5,9 @@ import os
 
 from django.db.models import F
 from django.db import transaction
+from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
+
 
 from django_q.tasks import async_task
 from kinksorter_app.models import PornDirectory, Movie, CurrentTask
@@ -92,12 +94,16 @@ class MovieScanner:
 
     def scan(self):
         self._get_listing(self.directory_tree, recursion_depth=5)
-        with transaction.atomic():
-            task, _ = CurrentTask.objects.get_or_create(name='Scanning')
-            task.progress_max += self._num_trees
-            task.save()
+        if settings.USE_ASYNC:
+            with transaction.atomic():
+                task, _ = CurrentTask.objects.get_or_create(name='Scanning')
+                task.progress_max += self._num_trees
+                task.save()
 
-        return async_task(self._scan_tree, self.directory_tree)
+        if settings.USE_ASYNC:
+            return async_task(self._scan_tree, self.directory_tree)
+        else:
+            self._scan_tree(self.directory_tree)
 
     def _get_listing(self, tree, recursion_depth=0):
         recursion_depth -= 1
@@ -133,12 +139,13 @@ class MovieScanner:
                     self.add_movie(leaf, tree)
                 except ObjectDoesNotExist:
                     # Directory does not exist anymore. Was deleted, so abort Task
-                    current_task = CurrentTask.objects.get(name='Scanning')
-                    current_task.progress_current = current_task.progress_max
-                    current_task.save()
+                    if settings.USE_ASYNC:
+                        current_task = CurrentTask.objects.get(name='Scanning')
+                        current_task.progress_current = current_task.progress_max
+                        current_task.save()
                     return
-
-            CurrentTask.objects.filter(name='Scanning').update(progress_current=F('progress_current')+1)
+            if settings.USE_ASYNC:
+                CurrentTask.objects.filter(name='Scanning').update(progress_current=F('progress_current')+1)
 
         for next_tree in tree.nodes:
             self._scan_tree(next_tree)
@@ -169,6 +176,10 @@ class MovieScanner:
         movie.save()
 
         recognize_movie(movie, None, api=api)
+
+        if self.porn_directory.movies.filter(full_path=leaf.full_path).exists():
+            logging.debug('    Duplicate movie.')
+            return
 
         self.porn_directory.movies.add(movie)
         logging.info('ADDED MOVIE {}...'.format(movie.scene_id))

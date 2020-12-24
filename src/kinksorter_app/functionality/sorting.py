@@ -3,11 +3,14 @@ import shutil
 import os
 
 from django.http import HttpResponse, JsonResponse
+from django.conf import settings
 from django_q.tasks import async_task, Iter, result, fetch
 from kinksorter_app.apis.api_router import APIS
 from kinksorter_app.models import PornDirectory, Movie, CurrentTask, get_scene_from_movie
 from kinksorter_app.functionality.status import get_current_task, hook_set_task_ended
 from kinksorter_app.functionality.directory_handling import Leaf, get_target_porn_directory
+
+logger = logging.getLogger(__name__)
 
 
 def get_current_task_request(request):
@@ -86,18 +89,21 @@ class TargetSorter:
         logging.basicConfig(format='%(message)s', level=logging.DEBUG)
         logging.info('Sorting...')
 
-        current_task, _ = CurrentTask.objects.get_or_create(name='Sorting')
+        if settings.USE_ASYNC:
+            current_task, _ = CurrentTask.objects.get_or_create(name='Sorting')
         for movie in self.movies:
             logging.debug('Sorting movie {}...'.format(movie.file_name))
 
             self._sort_movie(movie)
 
-            current_task.progress_current += 1
-            current_task.save()
+            if settings.USE_ASYNC:
+                current_task.progress_current += 1
+                current_task.save()
 
         if self.action == 'list':
             return self._get_shopping_list()
         if self.action == 'cmd':
+            logger.warning("This won't set metadata for those files")
             return self._get_cmd_list()
 
         return True
@@ -115,6 +121,8 @@ class TargetSorter:
             return
 
         scene_, new_movie_path = self._build_new_movie_path(movie)
+        if not new_movie_path:
+            return
 
         if self.action in ['cmd', 'list']:
             self._list_movie(movie, new_movie_path)
@@ -123,7 +131,7 @@ class TargetSorter:
         if os.path.exists(new_movie_path):
             # Only overwrite file when the new movie is "better" (quality)
             if not self._is_new_movie_better(movie, new_movie_path):
-                logging.warning('Existing file "{}" is equal or better than new file "{}", skipping...'.format(
+                logging.debug('Existing file "{}" is equal or better than new file "{}", skipping...'.format(
                     new_movie_path, movie.full_path))
                 return
 
@@ -133,7 +141,8 @@ class TargetSorter:
         existing_file = target_movie_path if os.path.exists(target_movie_path) else None
 
         delete = []
-        for position, _, c, p, _ in enumerate(self.movie_list):
+        for position, movie_ in enumerate(self.movie_list):
+            _, c, p, _ = movie_
             if p == target_movie_path:
                 if self._is_new_movie_better(movie, c) and self._is_new_movie_better(movie, existing_file):
                     # Mark for deletion, as this new movie is better than the one in the list
@@ -166,6 +175,9 @@ class TargetSorter:
             else:
                 return
 
+            api = APIS.get(movie.api) if movie.api in APIS else APIS.get('Default')
+            api.update_metadata(movie, target_movie_path)
+
         except os.error as e:
             logging.warning(
                 'File "{}" could not be {}}! {}'.format(target_movie_path, self.action, e))
@@ -180,17 +192,24 @@ class TargetSorter:
 
     def _build_new_movie_path(self, movie):
         scene = get_scene_from_movie(movie)
-        target_base = PornDirectory.objects.get(id=0).path
+        target_base = self.target_directory.path
         if scene:
             site_pathname = scene.get('site', {}).get('name')
             performers = ', '.join([i.get('name', 'API-Error') for i in scene.get('performers')])
-            api = movie.api.name
+            api = movie.api
 
-            new_filename = self.sort_format.format(movie=movie,
-                                                   scene=scene,
-                                                   site_name=site_pathname,
-                                                   performers=performers,
-                                                   api=api)
+            try:
+                new_filename = self.sort_format.format(movie=movie,
+                                                       scene=scene,
+                                                       site_name=site_pathname,
+                                                       performers=performers,
+                                                       api=api,
+                                                       title=scene.get("title"),
+                                                       shootid=movie.scene_id,
+                                                       extension=movie.extension)
+            except KeyError as e:
+                logger.error(f"Key {str(e)} not found in format '{self.sort_format}'")
+                return scene, None
         else:
             site_pathname = '_unsorted'
             new_filename = movie.file_name

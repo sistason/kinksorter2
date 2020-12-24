@@ -27,6 +27,16 @@ class BaseAPI:
         """ Get the site directly from the site """
         return
 
+    @NotImplementedError
+    def recognize(self, movie, *args, **kwargs):
+        """ Recognize the movie """
+        return
+
+    @NotImplementedError
+    def update_metadata(self, movie, target_path):
+        """ Insert Metadata into file at target_path """
+        return
+
     @staticmethod
     def _to_json(result):
         """ Helper to convert a string to JSON """

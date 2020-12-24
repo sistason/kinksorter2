@@ -16,3 +16,4 @@ ipython
 
 whitenoise
 gunicorn
+mutagen
