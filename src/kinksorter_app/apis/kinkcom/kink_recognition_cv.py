@@ -2,7 +2,6 @@ import logging
 import cv2
 import os
 import sys
-import pytesseract
 from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
@@ -49,7 +48,6 @@ class KinkRecognitionCv:
                 if not shootid_crop.any():
                     continue
 
-                # shootid = self._recognize_shootid_tesseract(shootid_crop)
                 shootid = self._recognize_shootid_templates(shootid_crop)
 
         if not shootid:
@@ -149,19 +147,6 @@ class KinkRecognitionCv:
             frame_count = capture.get(cv2.CAP_PROP_POS_FRAMES)
 
         return fps, frame_count
-
-    @staticmethod
-    def _recognize_shootid_tesseract(shootid_img):
-        _, t_ = cv2.threshold(shootid_img, 100, 255, cv2.THRESH_BINARY)
-        x, y, w, h = cv2.boundingRect(t_)
-        t_ = t_[y:y + h, x:x + w]
-        output = pytesseract.image_to_string(t_, config=r'--psm 6 -c tessedit_char_whitelist=0123456789')
-        if output:
-            result = output.split("\n")[0]
-            if result.isdigit():
-                return int(result)
-
-        return 0
 
     def _recognize_shootid_templates(self, shootid_img):
         _, img_thresholded = cv2.threshold(shootid_img, 100, 255, cv2.THRESH_BINARY)

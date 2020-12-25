@@ -1,7 +1,8 @@
-FROM python:3.7
+FROM python:3.9
 ENV PYTHONUNBUFFERED 1
 
 #RUN apk update && apk add --virtual build-deps python3-dev
+RUN apt update && apt install -y libgl1-mesa-glx
 
 COPY requirements.txt .
 RUN pip install -r requirements.txt
@@ -11,5 +12,5 @@ WORKDIR /opt/kinksorter
 
 COPY src /opt/kinksorter
 
-
-ENTRYPOINT ["/bin/sh", "/opt/kinksorter/entrypoint.sh"]
+RUN chmod +x /opt/kinksorter/entrypoint.sh
+ENTRYPOINT ["/opt/kinksorter/entrypoint.sh"]
