@@ -25,4 +25,4 @@ def get_correct_api(dir_name, apis):
 
 
 kink_api = KinkAPI()
-APIS = {'Kink.com': kink_api, 'Default': kink_api}
+APIS = {'Kink.com': kink_api, 'default': kink_api}

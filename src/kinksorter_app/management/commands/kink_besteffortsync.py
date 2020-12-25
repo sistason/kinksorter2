@@ -41,7 +41,8 @@ class Command(BaseCommand):
             dst_handler.scan()  # only scan initially, since the merged files get added to the db
 
         if PornDirectory.objects.filter(path=src_dir).exists():
-            src_handler = PornDirectoryHandler(PornDirectory.objects.get(path=src_dir).id)
+            PornDirectory.objects.delete(path=src_dir)  # don't keep the src directory, to force resyncs
+            src_handler = PornDirectoryHandler(None, init_path=src_dir, name="src")
         else:
             src_handler = PornDirectoryHandler(None, init_path=src_dir, name="src")
 
