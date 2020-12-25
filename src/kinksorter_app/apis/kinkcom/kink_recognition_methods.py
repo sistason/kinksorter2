@@ -64,7 +64,11 @@ class KinkRecognitionMethods:
     @staticmethod
     def get_shootid_through_metadata(file_path):
         """ Works only on Kink.com movies from around 3500-4500 (or with our own tags) """
-        metadata = mutagen.File(file_path)
+        try:
+            metadata = mutagen.File(file_path)
+        except mutagen.MutagenError:
+            metadata = None
+
         if metadata is not None:
             try:
                 # the original, legacy Title of shootids 3500-4500
