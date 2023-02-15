@@ -49,7 +49,7 @@ def recognize_multiple(movie_ids, movies=None, wait_for_finish=True):
     return recognized
 
 
-def recognize_movie(movie, movie_id, new_name='', new_sid=0, api=None, extensive=False):
+def recognize_movie(movie, movie_id, new_name='', new_sid=0, api=None, extensive=False, want_be_sure=False):
     """ Runs recognition on the supplied movie, with override-arguments if passed
 
     This method will usually be used to run on the django-q cluster. For this reason,
@@ -73,8 +73,9 @@ def recognize_movie(movie, movie_id, new_name='', new_sid=0, api=None, extensive
     movie.scene_id = 0
     movie.save()
 
-    scene_id = api.recognize(movie, override_name=new_name, override_sid=new_sid, extensive=extensive)
-    if scene_id is not None and scene_id != 0:
+    scene_id = api.recognize(movie, override_name=new_name, override_sid=new_sid,
+                             extensive=extensive, want_be_sure=want_be_sure)
+    if scene_id:
         movie.scene_id = scene_id
         movie.save()
         return movie

@@ -175,14 +175,12 @@ class MovieScanner:
         movie = Movie(api=api.name, **leaf.get_file_properties(), from_directory=self.porn_directory.id)
         movie.save()
 
-        recognize_movie(movie, None, api=api)
-
         if self.porn_directory.movies.filter(full_path=leaf.full_path).exists():
             logging.debug('    Duplicate movie.')
             return
 
         self.porn_directory.movies.add(movie)
-        logging.info('ADDED MOVIE {}...'.format(movie.scene_id))
+        logging.info('ADDED MOVIE {}...'.format(movie.file_name))
 
     def __deepcopy__(self, memodict=None):
         return self

@@ -2,6 +2,7 @@ import logging
 import cv2
 import os
 import sys
+import pytesseract
 from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
@@ -48,7 +49,7 @@ class KinkRecognitionCv:
                 if not shootid_crop.any():
                     continue
 
-                shootid = self._recognize_shootid_templates(shootid_crop)
+                shootid = self._recognize_shootid(shootid_crop)
 
         if not shootid:
             logger.debug('Couldn\'t recognize digits with OpenCV for file "{}"'.format(file_path))
@@ -84,12 +85,13 @@ class KinkRecognitionCv:
                     for template in self.shootid_templates:
                         template_shape, max_loc, max_val = self._match_template(red_frame, template)
                         if max_val > 0.6:
-                            shootid_crop = red_frame[max_loc[1]:max_loc[1] + template_shape[0],
-                                           max_loc[0] + template_shape[1]:]
-                            if not shootid_crop.any():
+                            shootid_rough_crop = red_frame[max_loc[1]:max_loc[1] + template_shape[0],
+                                                 max_loc[0] + template_shape[1]:]
+                            if not shootid_rough_crop.any():
                                 continue
 
-                            shootid = self._recognize_shootid_templates(shootid_crop)
+                            shootid = self._recognize_shootid(shootid_rough_crop)
+
                             if shootid:
                                 return shootid
 
@@ -148,18 +150,24 @@ class KinkRecognitionCv:
 
         return fps, frame_count
 
-    def _recognize_shootid_templates(self, shootid_img):
-        _, img_thresholded = cv2.threshold(shootid_img, 100, 255, cv2.THRESH_BINARY)
-        x, y, w, h = cv2.boundingRect(img_thresholded)
-        img_thresholded_cropped = img_thresholded[y:y + h, x:x + w]
+    @staticmethod
+    def _recognize_shootid_tesseract(shootid_img):
+        output = pytesseract.image_to_string(shootid_img, config=r'--psm 6 -c tessedit_char_whitelist=0123456789')
+        if output:
+            result = output.split("\n")[0]
+            if result.isdigit():
+                return int(result)
 
+        return 0
+
+    def _recognize_shootid_templates(self, shootid_img):
         # scale digit_templates to height of shootid_digits
-        scale_factor = img_thresholded_cropped.shape[0] / self.shootit_digits_templates[0].shape[0]
+        scale_factor = shootid_img.shape[0] / self.shootit_digits_templates[0].shape[0]
         scaled_templates = [cv2.resize(template.copy(), (0, 0), fx=scale_factor, fy=scale_factor)
                             for template in self.shootit_digits_templates]
 
         digits_ = []
-        img_digits = self._split_into_digits(img_thresholded_cropped)
+        img_digits = self._split_into_digits(shootid_img)
         for i, img_digit in enumerate(img_digits):
             digit = self._match_digit_template(img_digit, scaled_templates)
             if not digit:
@@ -203,6 +211,20 @@ class KinkRecognitionCv:
             match_results.append((i, max_val))
 
         return str(max(match_results, key=lambda t: t[1])[0])
+
+    def _recognize_shootid(self, shootid_rough_crop):
+        _, img_thresholded = cv2.threshold(shootid_rough_crop, 100, 255, cv2.THRESH_BINARY)
+        x, y, w, h = cv2.boundingRect(img_thresholded)
+        img_thresholded_cropped = img_thresholded[y:y + h, x:x + w]
+
+        self.debug_frame(img_thresholded_cropped)
+        shootid_tpl = self._recognize_shootid_templates(img_thresholded_cropped)
+        logger.debug(f"Shootid recognition Tesseract: {shootid_tpl}")
+        shootid_pyt = self._recognize_shootid_tesseract(img_thresholded_cropped)
+        logger.debug(f"Shootid recognition Templates: {shootid_pyt}")
+
+        if shootid_pyt == shootid_tpl:
+            return shootid_pyt
 
 
 # Thanks to https://stackoverflow.com/questions/4675728/

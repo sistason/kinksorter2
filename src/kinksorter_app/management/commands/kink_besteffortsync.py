@@ -48,14 +48,23 @@ class Command(BaseCommand):
 
         src_handler.scan()
 
+        # TODO: Why is the directory empty in a docker-container with foreign db?
         for movie in src_handler.directory.movies.all():
             if not movie.scene_id:
-                recognize_movie(movie, None)
+                recognize_movie(movie, None, want_be_sure=True)
                 if not movie.scene_id:
                     # if it was not recognized during first run, recognize with extensive=True again
-                    recognize_movie(movie, None, extensive=True)
+                    recognize_movie(movie, None, extensive=True, want_be_sure=True)
             if not dst_handler.directory.movies.filter(scene_id=movie.scene_id).exists():
                 merge_movie(movie.id)
+
+        # create listing
+        "filename + dir | cv md nr | sure"
+        format_string = "{name:} , {}"
+        with open('current_sorting_review.csv', "w") as f:
+            for movie in dst_handler.directory.movies.all():
+
+                logging.info()
 
         ts = TargetSorter("move", list(dst_handler.directory.movies.all()))
         ts.sort()

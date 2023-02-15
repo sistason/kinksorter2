@@ -143,7 +143,11 @@ class KinkAPI(BaseAPI):
         return all_
 
     def update_metadata(self, movie, target_path):
-        metadata = mutagen.File(target_path)
+        try:
+            metadata = mutagen.File(target_path)
+        except mutagen.MutagenError:
+            metadata = None
+
         if metadata is None:
             logger.error(f"Could not edit metadata of file {target_path}!")
             return
@@ -154,6 +158,9 @@ class KinkAPI(BaseAPI):
                 metadata.pop(tag)
 
         scene_data = self.shoot(movie.scene_id)[0]
+        if not scene_data:
+            logger.error(f"Wanted to update metadata of {target_path} with invalid scene_id {movie.scene_id}!")
+            return
 
         for key, value in scene_data.items():
             if type(value) in [int, str]:

@@ -83,6 +83,7 @@ class KinkRecognitionMethods:
 
         return 0
 
+
 if __name__ == '__main__':
     template_dir = os.path.join(os.path.dirname(__file__), 'templates')
     krm = KinkRecognitionMethods(template_dir)

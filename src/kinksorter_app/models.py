@@ -98,6 +98,7 @@ class PornDirectory(models.Model):
                 logging.error('Cannot relink directory "{}" to {}, there is something there!'.format(self.path, link_path))
                 return
 
+        # TODO: Why does this break in docker???
         symlink(self.path, link_path)
 
     def validate_sort_format(self, fmt):
